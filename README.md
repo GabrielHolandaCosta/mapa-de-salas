@@ -4,12 +4,12 @@ Aplicação web independente para as salas 01 a 17. Usa banco local SQLite, aute
 
 ## Recursos
 
-- Painel por dia com 17 cartões, manhã e tarde, indicadores, pesquisa, filtros, impressão e Excel.
-- Semana-padrão de segunda a sábado e exceções por data: uma exceção prevalece somente naquela data.
-- Autosave com atraso de 650 ms, controle de versão e aviso de conflito para impedir perda silenciosa de alterações.
-- Perfis: `ADMIN`, `EDITOR` e `VIEWER`; administração de usuários e histórico separados do mapa.
-- Histórico com antes/depois, filtros no endpoint e restauração somente para administrador.
-- Importação conservadora de `.docx`: lê somente Salas 01–17, exclui áreas especiais como entidades próprias e conserva a célula original em observações, marcada para revisão.
+- Grade semanal com as salas 01 a 17 nas linhas e segunda a sábado nas colunas, separada por manhã e tarde.
+- Layout próprio para celular, pesquisa, tema escuro, impressão e estados visuais para livre, ocupada, reservada e fechada.
+- Exportação em PDF com duas páginas organizadas (manhã e tarde) e reimportação segura do PDF gerado pelo sistema.
+- Importação conservadora de `.docx`: lê somente as salas 01–17 e conserva o conteúdo original para revisão.
+- Perfis separados: `ADMIN` gerencia contas, `EDITOR` altera o mapa e `VIEWER` consulta o mapa e o histórico.
+- Confirmação antes de limpar uma célula, uma linha inteira ou excluir um usuário.
 
 ## Rodar localmente
 
@@ -29,9 +29,9 @@ npm run dev
 
 Para testes, os valores padrão são usuário `admin` e senha `123456`. Troque a senha antes de publicar o sistema.
 
-## Importação do Word
+## Importação de PDF ou Word
 
-Entre como administrador, abra **Administração > Importação**, envie o arquivo Word e confira a prévia. O aplicativo não altera o Word. Uma confirmação explícita grava os registros no banco e cria logs de importação.
+Entre com uma conta de editor, clique em **Importar PDF/Word** e confira a quantidade reconhecida antes de confirmar. O PDF deve ter sido exportado pelo próprio sistema; arquivos Word `.docx` no formato original também são aceitos.
 
 O parser não assume campos incertos: mantém o texto integral de cada célula em observações; código e especialidade só são sugeridos quando identificáveis. A revisão é obrigatória (`needsReview`).
 

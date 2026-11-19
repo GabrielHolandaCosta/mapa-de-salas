@@ -1,121 +1,49 @@
-const $ = selector => document.querySelector(selector);
-const days = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-const roleNames = { ADMIN: 'Administrador', EDITOR: 'Editor', VIEWER: 'Visualizador' };
-let me = null;
-let rows = [];
-let importPreview = [];
-let selectedDate = new Date().toISOString().slice(0, 10);
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const days=['Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+const state={user:null,shift:'MANHA',rows:new Map(),selected:null,importRows:null,search:''};
+const key=(room,day,shift=state.shift)=>`${room}-${day}-${shift}`;
 
-async function api(url, options = {}) {
-  const isForm = options.body instanceof FormData;
-  const response = await fetch(url, { ...options, headers: isForm ? options.headers : { 'Content-Type': 'application/json', ...(options.headers || {}) } });
-  if (response.status === 401) { $('#workspace').hidden = true; $('#login').hidden = false; throw new Error('Sua sessão terminou. Entre novamente.'); }
-  if (!response.ok) { const error = await response.json().catch(() => ({})); throw new Error(error.error || 'Não foi possível concluir a ação.'); }
-  return response.status === 204 ? null : response.json();
-}
+async function api(url,options={}){const response=await fetch(url,{headers:{...(options.body instanceof FormData?{}:{'Content-Type':'application/json'}),...(options.headers||{})},...options});if(response.status===401){showLogin();throw new Error('Sua sessão expirou. Entre novamente.')}if(response.status===204)return null;const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||'Não foi possível concluir esta ação.');return data}
+function showLogin(){state.user=null;$('#workspace').hidden=true;$('#adminPage').hidden=true;$('#login').hidden=false}
+function toast(message){const el=$('#toast');el.textContent=message;el.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('show'),2600)}
+function setTheme(dark){document.documentElement.classList.toggle('dark',dark);localStorage.setItem('mapa-theme',dark?'dark':'light')}
+setTheme(localStorage.getItem('mapa-theme')==='dark');
 
-const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
-const dateOnly = value => value ? String(value).slice(0, 10) : null;
-function weekday() { const day = new Date(`${selectedDate}T12:00:00`).getDay(); return day === 0 ? 5 : Math.max(0, Math.min(5, day - 1)); }
-function canEdit() { return me && (me.role === 'ADMIN' || me.role === 'EDITOR'); }
-function showSave(text = 'Atualizado') { $('#saveState').textContent = text; }
+async function boot(){try{const {user}=await api('/api/auth/me');state.user=user;enter()}catch{showLogin()}}
+function enter(){if(state.user.role==='ADMIN'){if(location.pathname!=='/admin')history.replaceState({},'', '/admin');showAdmin()}else{if(location.pathname==='/admin'||location.pathname==='/loginadm')history.replaceState({},'', '/');showWorkspace()}}
+$('#loginForm').addEventListener('submit',async event=>{event.preventDefault();$('#loginError').textContent='';try{const result=await api('/api/auth/login',{method:'POST',body:JSON.stringify({username:$('#username').value,password:$('#password').value})});state.user=result.user;enter()}catch(error){$('#loginError').textContent=error.message}});
+async function logout(){await api('/api/auth/logout',{method:'POST'}).catch(()=>{});history.replaceState({},'', '/');showLogin()}
+$('#logout').onclick=logout;$('#adminLogout').onclick=logout;$('#theme').onclick=()=>setTheme(!document.documentElement.classList.contains('dark'));$('#adminTheme').onclick=$('#theme').onclick;
 
-async function load() {
-  const scope = $('#mode').value;
-  const date = scope === 'DATA' ? selectedDate : '';
-  rows = (await api(`/api/assignments?scope=${scope}&weekday=${$('#day').value}&date=${date}`)).rows;
-  render();
-}
+async function showWorkspace(){$('#login').hidden=true;$('#adminPage').hidden=true;$('#workspace').hidden=false;$('#userBadge').textContent=`${state.user.name} · ${state.user.role==='EDITOR'?'Editor':'Visualizador'}`;$$('.editor-only').forEach(el=>el.hidden=state.user.role!=='EDITOR');await loadMatrix()}
+async function loadMatrix(){const results=await Promise.all(days.map((_,weekday)=>api(`/api/assignments?scope=PADRAO&weekday=${weekday}`)));state.rows.clear();results.forEach(({rows},weekday)=>rows.forEach(row=>state.rows.set(key(row.room,weekday,row.shift),row)));render()}
+function cellText(row){if(!row||row.status==='LIVRE')return {name:'Livre',meta:'Clique para preencher'};return {name:row.professional||({RESERVADA:'Reservada',FECHADA:'Fechada'}[row.status]||'Ocupada'),meta:[row.code,row.specialty,row.operator].filter(Boolean).join(' · ')||row.status.toLowerCase()}}
+function cellButton(row,room,day){const text=cellText(row);const status=(row?.status||'LIVRE').toLowerCase();return `<button class="cell-button ${status}" data-cell data-room="${room}" data-day="${day}" aria-label="Sala ${room}, ${days[day]}: ${text.name}"><span class="name">${escapeHtml(text.name)}</span><span class="meta">${escapeHtml(text.meta)}</span></button>`}
+function rowMatches(room){if(!state.search)return true;const query=state.search.toLowerCase();if(`sala ${room}`.includes(query)||String(room).padStart(2,'0').includes(query))return true;return days.some((_,day)=>{const row=state.rows.get(key(room,day));return [row?.professional,row?.code,row?.specialty,row?.operator,row?.notes].filter(Boolean).join(' ').toLowerCase().includes(query)})}
+function render(){const rooms=Array.from({length:17},(_,i)=>i+1).filter(rowMatches);$('#scheduleBody').innerHTML=rooms.map(room=>`<tr><th class="room-label" scope="row"><small>SALA</small>${String(room).padStart(2,'0')}</th>${days.map((_,day)=>`<td>${cellButton(state.rows.get(key(room,day)),room,day)}</td>`).join('')}<td class="row-action editor-only" ${state.user.role!=='EDITOR'?'hidden':''}><button data-clear-row="${room}" title="Limpar esta linha">⌫</button></td></tr>`).join('');$('#mobileSchedule').innerHTML=rooms.map(room=>`<article class="mobile-room"><div class="mobile-room-head"><b>Sala ${String(room).padStart(2,'0')}</b>${state.user.role==='EDITOR'?`<button data-clear-row="${room}">Limpar linha</button>`:''}</div><div class="mobile-days">${days.map((day,index)=>`<div class="mobile-day"><span>${day}</span>${cellButton(state.rows.get(key(room,index)),room,index)}</div>`).join('')}</div></article>`).join('');const occupied=[...state.rows.values()].filter(row=>row.shift===state.shift&&row.status!=='LIVRE').length;$('#occupiedCount').textContent=occupied;bindMatrix()}
+function bindMatrix(){$$('[data-cell]').forEach(button=>button.onclick=()=>openCell(Number(button.dataset.room),Number(button.dataset.day)));$$('[data-clear-row]').forEach(button=>button.onclick=()=>clearRow(Number(button.dataset.clearRow)))}
+$$('[data-shift]').forEach(button=>button.onclick=()=>{$$('[data-shift]').forEach(item=>item.classList.remove('active'));button.classList.add('active');state.shift=button.dataset.shift;render()});
+$('#search').oninput=event=>{state.search=event.target.value.trim();render()};$('#printBtn').onclick=()=>print();
 
-function render() {
-  const query = $('#search').value.toLowerCase().trim();
-  const status = $('#statusFilter').value;
-  const groups = Array.from({ length: 17 }, (_, index) => ({ room: index + 1, turns: rows.filter(row => row.room === index + 1) }))
-    .filter(group => !query || String(group.room).padStart(2, '0').includes(query) || group.turns.some(turn => [turn.professional, turn.specialty, turn.code, turn.operator, turn.notes].join(' ').toLowerCase().includes(query)))
-    .filter(group => !status || group.turns.some(turn => turn.status === status));
-  const count = value => rows.filter(row => row.status === value).length;
-  $('#stats').innerHTML = ['LIVRE', 'OCUPADA', 'RESERVADA', 'FECHADA'].map(value => `<div class="stat ${value}"><b>${count(value)}</b><span>${value[0] + value.slice(1).toLowerCase()}</span></div>`).join('');
-  $('#rooms').innerHTML = groups.map(group => `<button class="room" data-room="${group.room}"><div class="room-title"><span>Sala</span><strong>${String(group.room).padStart(2, '0')}</strong></div>${group.turns.map(turn => `<div class="shift ${turn.status}"><strong>${turn.shift === 'MANHA' ? 'Manhã' : 'Tarde'} · ${turn.status}</strong><span>${esc(turn.professional || (turn.status === 'LIVRE' ? 'Disponível' : 'Sem profissional definido'))}</span>${turn.specialty ? `<small>${esc(turn.specialty)}</small>` : ''}${turn.needsReview ? '<small class="review-tag">Revisar importação</small>' : ''}</div>`).join('')}</button>`).join('');
-  document.querySelectorAll('.room').forEach(button => button.onclick = () => openRoom(Number(button.dataset.room)));
-}
+function openCell(room,day){const row=state.rows.get(key(room,day));state.selected={room,day,row};$('#cellTitle').textContent=`Sala ${String(room).padStart(2,'0')} · ${days[day]}`;$('#cellShift').textContent=state.shift==='MANHA'?'TURNO DA MANHÃ':'TURNO DA TARDE';$('#fieldStatus').value=row.status;$('#fieldProfessional').value=row.professional||'';$('#fieldCode').value=row.code||'';$('#fieldSpecialty').value=row.specialty||'';$('#fieldOperator').value=row.operator||'';$('#fieldNotes').value=row.notes||'';$('#lastEdit').textContent=row.lastEditedBy?`Última alteração por ${row.lastEditedBy} em ${formatDate(row.lastEditedAt)}`:'Nenhuma alteração registrada.';const readonly=state.user.role!=='EDITOR';$$('#cellForm input,#cellForm select,#cellForm textarea').forEach(field=>field.disabled=readonly);$('#cellDialog').showModal()}
+$('#cellForm').onsubmit=async event=>{event.preventDefault();if(state.user.role!=='EDITOR')return;const {row}=state.selected;const values={...row,status:$('#fieldStatus').value,professional:empty($('#fieldProfessional').value),code:empty($('#fieldCode').value),specialty:empty($('#fieldSpecialty').value),operator:empty($('#fieldOperator').value),notes:empty($('#fieldNotes').value),date:null};$('#saveState').textContent='Salvando…';try{const {row:saved}=await api(`/api/assignments/${row.id}`,{method:'PUT',body:JSON.stringify(values)});state.rows.set(key(saved.room,state.selected.day,saved.shift),saved);$('#cellDialog').close();$('#saveState').textContent='Tudo salvo';toast('Alteração salva');await loadMatrix()}catch(error){$('#saveState').textContent='Falha ao salvar';toast(error.message)}};
+$('#clearCell').onclick=async()=>{if(await confirmAction('Limpar esta célula?','Os dados desta sala e deste dia ficarão vazios. O histórico será preservado.','Limpar')){const {row}=state.selected;const values={...row,status:'LIVRE',professional:null,code:null,specialty:null,operator:null,notes:null,rawText:null,date:null};await api(`/api/assignments/${row.id}`,{method:'PUT',body:JSON.stringify(values)});$('#cellDialog').close();await loadMatrix();toast('Célula limpa')}};
+async function clearRow(room){if(!await confirmAction(`Limpar a Sala ${String(room).padStart(2,'0')}?`,`Todos os registros de ${state.shift==='MANHA'?'manhã':'tarde'}, de segunda a sábado, serão limpos. O histórico continuará disponível.`,'Limpar linha'))return;await api('/api/assignments/clear-row',{method:'POST',body:JSON.stringify({room,shift:state.shift})});await loadMatrix();toast('Linha limpa com segurança')}
 
-function inputField(turn, key, label, type = 'text') {
-  const disabled = canEdit() ? '' : 'disabled';
-  if (type === 'textarea') return `<label>${label}<textarea data-id="${turn.id}" data-key="${key}" rows="3" ${disabled}>${esc(turn[key] || '')}</textarea></label>`;
-  return `<label>${label}<input data-id="${turn.id}" data-key="${key}" value="${esc(turn[key] || '')}" ${disabled}></label>`;
-}
+$('#logsBtn').onclick=()=>openHistory();$('#cellHistory').onclick=()=>openHistory(state.selected?.room);$('#closeHistory').onclick=closeHistory;$('#drawerBackdrop').onclick=closeHistory;
+async function openHistory(room){const query=new URLSearchParams();if(room)query.set('room',room);query.set('shift',state.shift);const {rows}=await api(`/api/audits?${query}`);$('#historyList').innerHTML=rows.length?rows.map(log=>`<article class="history-item"><b>${actionLabel(log.action)} · Sala ${String(log.room||0).padStart(2,'0')}</b><p>${log.user?.name||'Usuário'} alterou o turno da ${log.shift==='MANHA'?'manhã':'tarde'}.</p><time>${formatDate(log.createdAt)}</time></article>`).join(''):'<p class="lead">Nenhuma alteração encontrada.</p>';$('#historyDrawer').classList.add('open');$('#drawerBackdrop').classList.add('open');$('#historyDrawer').setAttribute('aria-hidden','false')}
+function closeHistory(){$('#historyDrawer').classList.remove('open');$('#drawerBackdrop').classList.remove('open');$('#historyDrawer').setAttribute('aria-hidden','true')}
 
-function openRoom(room) {
-  const turns = rows.filter(row => row.room === room);
-  $('#editorTitle').textContent = `Sala ${String(room).padStart(2, '0')}`;
-  $('#turns').className = 'turns';
-  $('#turns').innerHTML = turns.map(turn => `<article class="turn ${turn.status}"><div class="turn-title"><h3>${turn.shift === 'MANHA' ? 'Manhã' : 'Tarde'}</h3><span class="save" id="state-${turn.id}">${canEdit() ? 'Salvo' : 'Somente leitura'}</span></div><label>Status<select data-id="${turn.id}" data-key="status" ${canEdit() ? '' : 'disabled'}>${['LIVRE', 'OCUPADA', 'RESERVADA', 'FECHADA'].map(value => `<option ${turn.status === value ? 'selected' : ''}>${value}</option>`).join('')}</select></label>${inputField(turn, 'professional', 'Profissional')}${inputField(turn, 'code', 'Código ou matrícula')}${inputField(turn, 'specialty', 'Especialidade')}${inputField(turn, 'operator', 'Secretária ou operador')}${inputField(turn, 'notes', 'Observações', 'textarea')}<div class="last-change"><strong>Última alteração</strong><span>${turn.lastEditedBy ? `${esc(turn.lastEditedBy)} · ` : ''}${new Date(turn.lastEditedAt || turn.updatedAt).toLocaleString('pt-BR')}</span></div>${canEdit() ? `<footer><button type="button" class="ghost clear" data-id="${turn.id}">Limpar turno</button></footer>` : ''}</article>`).join('');
-  $('#editor').showModal();
-  if (!canEdit()) return;
-  document.querySelectorAll('#turns input,#turns textarea,#turns select').forEach(element => { let timer; element.oninput = () => { clearTimeout(timer); timer = setTimeout(() => saveTurn(element.dataset.id), 650); }; element.onchange = () => saveTurn(element.dataset.id); });
-  document.querySelectorAll('.clear').forEach(button => button.onclick = async () => { if (!confirm('Limpar todas as informações deste turno?')) return; const turn = rows.find(row => row.id === button.dataset.id); Object.assign(turn, { status: 'LIVRE', professional: null, code: null, specialty: null, operator: null, notes: null }); await saveTurn(turn.id); });
-}
+$('#importBtn').onclick=()=>{$('#importResult').textContent='';$('#confirmImport').hidden=true;state.importRows=null;$('#importDialog').showModal()};
+$('#importForm').onsubmit=async event=>{event.preventDefault();const file=$('#importFile').files[0];if(!file)return;const data=new FormData();data.append('file',file);$('#importResult').textContent='Lendo e conferindo o arquivo…';try{const result=await api('/api/import/preview',{method:'POST',body:data});state.importRows=result.rows;$('#importResult').textContent=`${result.rows.length} registros reconhecidos. ${result.warning}`;$('#confirmImport').hidden=false}catch(error){$('#importResult').textContent=error.message}};
+$('#confirmImport').onclick=async()=>{if(!state.importRows)return;if(!await confirmAction('Confirmar importação?',`${state.importRows.length} registros serão aplicados à semana. As alterações ficarão no histórico.`,'Importar'))return;await api('/api/import/confirm',{method:'POST',body:JSON.stringify({rows:state.importRows})});$('#importDialog').close();await loadMatrix();toast('Mapa importado com sucesso')};
 
-async function saveTurn(id) {
-  const turn = rows.find(row => row.id === id);
-  document.querySelectorAll(`[data-id="${id}"]`).forEach(element => { turn[element.dataset.key] = element.value || null; });
-  const state = $(`#state-${id}`); if (state) state.textContent = 'Salvando…'; showSave('Salvando…');
-  try {
-    let result;
-    if ($('#mode').value === 'DATA' && turn.scope === 'PADRAO') {
-      const payload = { ...turn, id: undefined, scope: 'DATA', date: selectedDate, weekday: null, version: undefined };
-      result = await api('/api/assignments', { method: 'POST', body: JSON.stringify(payload) });
-    } else {
-      result = await api(`/api/assignments/${turn.id}`, { method: 'PUT', body: JSON.stringify({ ...turn, date: dateOnly(turn.date) }) });
-    }
-    Object.assign(turn, result.row); showSave('Salvo'); await load();
-  } catch (error) { if (state) state.textContent = 'Erro ao salvar'; showSave('Erro ao salvar'); alert(error.message); }
-}
+async function showAdmin(){$('#login').hidden=true;$('#workspace').hidden=true;$('#adminPage').hidden=false;$('#adminBadge').textContent=`${state.user.name} · Administrador`;await loadUsers()}
+async function loadUsers(){const {rows}=await api('/api/users');$('#usersCount').textContent=`${rows.length} conta${rows.length===1?'':'s'}`;$('#usersList').innerHTML=rows.map(user=>`<article class="user-row" data-user="${user.id}"><div class="user-name"><b>${escapeHtml(user.name)}</b><small>@${escapeHtml(user.username||'sem-usuario')}</small></div><select class="role-select" data-role ${user.id===state.user.id?'disabled':''}><option value="VIEWER" ${user.role==='VIEWER'?'selected':''}>Visualizador</option><option value="EDITOR" ${user.role==='EDITOR'?'selected':''}>Editor</option><option value="ADMIN" ${user.role==='ADMIN'?'selected':''}>Administrador</option></select><span class="status-active">${user.active?'● Ativo':'○ Bloqueado'}</span><div class="user-actions">${user.id!==state.user.id?`<button data-toggle>${user.active?'Bloquear':'Ativar'}</button><button data-password>Nova senha</button><button data-delete>Excluir</button>`:'<small>Sua conta</small>'}</div></article>`).join('');bindUsers()}
+function bindUsers(){$$('[data-user]').forEach(row=>{const id=row.dataset.user;row.querySelector('[data-role]')?.addEventListener('change',async event=>{await api(`/api/users/${id}`,{method:'PATCH',body:JSON.stringify({role:event.target.value})});toast('Permissão atualizada');loadUsers()});row.querySelector('[data-toggle]')?.addEventListener('click',async()=>{const active=row.querySelector('.status-active').textContent.includes('Ativo');await api(`/api/users/${id}`,{method:'PATCH',body:JSON.stringify({active:!active})});loadUsers();toast(active?'Usuário bloqueado':'Usuário ativado')});row.querySelector('[data-password]')?.addEventListener('click',async()=>{const password=prompt('Digite a nova senha (mínimo de 6 caracteres):');if(!password)return;if(password.length<6)return toast('A senha precisa ter 6 caracteres');await api(`/api/users/${id}`,{method:'PATCH',body:JSON.stringify({password})});toast('Senha atualizada')});row.querySelector('[data-delete]')?.addEventListener('click',async()=>{if(!await confirmAction('Excluir este usuário?','A pessoa perderá o acesso ao sistema. Os registros históricos serão mantidos.','Excluir usuário'))return;await api(`/api/users/${id}`,{method:'DELETE'});loadUsers();toast('Usuário excluído')})})}
+$('#newUserBtn').onclick=()=>{$('#userForm').reset();$('#userError').textContent='';$('#userDialog').showModal()};$('#userForm').onsubmit=async event=>{event.preventDefault();$('#userError').textContent='';try{await api('/api/users',{method:'POST',body:JSON.stringify({name:$('#newName').value.trim(),username:$('#newUsername').value.trim(),password:$('#newPassword').value,role:$('#newRole').value})});$('#userDialog').close();await loadUsers();toast('Usuário criado')}catch(error){$('#userError').textContent=error.message}};
 
-async function showUsers(box) {
-  const result = await api('/api/users');
-  box.innerHTML = `<div class="section-head"><div><h3>Usuários</h3><p>Defina quem pode editar ou apenas visualizar.</p></div></div><form id="newUser" class="user-form"><input name="name" placeholder="Nome completo" required><input name="username" placeholder="Usuário" pattern="[a-zA-Z0-9._-]+" required><input name="password" type="password" minlength="6" placeholder="Senha (mínimo 6)" required><select name="role"><option value="VIEWER">Somente visualizar</option><option value="EDITOR">Pode editar</option><option value="ADMIN">Administrador</option></select><button>Criar usuário</button></form><div class="table-wrap"><table class="table"><tr><th>Pessoa</th><th>Permissão</th><th>Situação</th><th>Ações</th></tr>${result.rows.map(user => `<tr><td><strong>${esc(user.name)}</strong><br><span class="muted">@${esc(user.username || '')}</span></td><td><select data-role-user="${user.id}">${Object.entries(roleNames).map(([value,label])=>`<option value="${value}" ${user.role===value?'selected':''}>${label}</option>`).join('')}</select></td><td>${user.active ? 'Ativo' : 'Inativo'}</td><td class="user-actions"><button type="button" data-password-user="${user.id}">Nova senha</button><button type="button" data-user="${user.id}" data-active="${!user.active}">${user.active ? 'Desativar' : 'Reativar'}</button></td></tr>`).join('')}</table></div>`;
-  $('#newUser').onsubmit = async event => { event.preventDefault(); await api('/api/users', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(event.target))) }); showUsers(box); };
-  box.querySelectorAll('[data-user]').forEach(button => button.onclick = async () => { await api(`/api/users/${button.dataset.user}`, { method: 'PATCH', body: JSON.stringify({ active: button.dataset.active === 'true' }) }); showUsers(box); });
-  box.querySelectorAll('[data-role-user]').forEach(select => select.onchange = async () => { await api(`/api/users/${select.dataset.roleUser}`, { method: 'PATCH', body: JSON.stringify({ role: select.value }) }); showUsers(box); });
-  box.querySelectorAll('[data-password-user]').forEach(button => button.onclick = async () => { const password = prompt('Digite a nova senha (mínimo de 6 caracteres):'); if (!password) return; await api(`/api/users/${button.dataset.passwordUser}`, { method: 'PATCH', body: JSON.stringify({ password }) }); alert('Senha alterada com sucesso.'); });
-}
-
-async function showHistory(box) {
-  const result = await api('/api/audits');
-  box.innerHTML = `<div class="section-head"><div><h3>Histórico</h3><p>Últimas pessoas que alteraram o mapa.</p></div></div><div class="table-wrap"><table class="table"><tr><th>Quando</th><th>Usuário</th><th>Sala e turno</th><th>Ação</th><th></th></tr>${result.rows.map(log => `<tr><td>${new Date(log.createdAt).toLocaleString('pt-BR')}</td><td>${esc(log.user.name)}<br><span class="muted">@${esc(log.user.username || '')}</span></td><td>Sala ${String(log.room || 0).padStart(2, '0')} · ${log.shift === 'MANHA' ? 'Manhã' : 'Tarde'}</td><td>${log.action}</td><td>${me.role === 'ADMIN' && log.before ? `<button data-restore="${log.id}">Restaurar</button>` : ''}</td></tr><tr><td colspan="5"><details><summary>Ver o que mudou</summary><pre>${esc(JSON.stringify(log.before, null, 2))}\n→\n${esc(JSON.stringify(log.after, null, 2))}</pre></details></td></tr>`).join('')}</table></div>`;
-  box.querySelectorAll('[data-restore]').forEach(button => button.onclick = async () => { if (!confirm('Restaurar a versão anterior deste turno?')) return; await api(`/api/audits/${button.dataset.restore}/restore`, { method: 'POST' }); await showHistory(box); });
-}
-
-function previewTable() {
-  return `<div class="import-summary"><strong>${importPreview.length} registros encontrados</strong><span>Todos preservam o texto original e ficam marcados para revisão.</span></div><div class="table-wrap"><table class="table"><tr><th>Sala</th><th>Dia</th><th>Turno</th><th>Status</th><th>Texto do Word</th></tr>${importPreview.slice(0, 220).map(row => `<tr><td>${String(row.room).padStart(2, '0')}</td><td>${days[row.weekday]}</td><td>${row.shift === 'MANHA' ? 'Manhã' : 'Tarde'}</td><td>${row.status}</td><td>${esc(row.rawText)}</td></tr>`).join('')}</table></div><button id="confirmImport">Confirmar importação</button>`;
-}
-
-async function showImport(box) {
-  box.innerHTML = `<div class="section-head"><div><h3>Importar o Word</h3><p>Selecione o mapa original, revise a prévia e só então confirme.</p></div></div><label class="upload"><input id="wordFile" type="file" accept=".docx"><span>Selecionar documento Word</span></label><div id="importResult"><p class="review">O arquivo original nunca será alterado. ECO, Holter, ECG, EEG e outras áreas especiais ficam fora desta versão.</p></div>`;
-  $('#wordFile').onchange = async event => { const file = event.target.files[0]; if (!file) return; const form = new FormData(); form.append('file', file); $('#importResult').innerHTML = '<p>Analisando documento…</p>'; try { const result = await api('/api/import/preview', { method: 'POST', body: form }); importPreview = result.rows; $('#importResult').innerHTML = previewTable(); $('#confirmImport').onclick = async () => { if (!confirm(`Importar ${importPreview.length} registros para a semana-padrão?`)) return; await api('/api/import/confirm', { method: 'POST', body: JSON.stringify({ rows: importPreview }) }); alert('Importação concluída. Os registros marcados podem ser revisados no mapa.'); await load(); showImport(box); }; } catch (error) { $('#importResult').innerHTML = `<p class="error">${esc(error.message)}</p>`; } };
-}
-
-async function admin(tab = me.role === 'ADMIN' ? 'users' : 'history') {
-  if (me.role !== 'ADMIN' && tab !== 'history') tab = 'history';
-  $('#admin').showModal();
-  document.querySelectorAll('.tabs [data-tab]').forEach(button => { button.hidden = me.role !== 'ADMIN' && button.dataset.tab !== 'history'; button.classList.toggle('active', button.dataset.tab === tab); });
-  const box = $('#adminContent'); box.innerHTML = '<p>Carregando…</p>';
-  try { if (tab === 'users') await showUsers(box); else if (tab === 'history') await showHistory(box); else await showImport(box); } catch (error) { box.innerHTML = `<p class="error">${esc(error.message)}</p>`; }
-}
-
-async function init() {
-  try { me = (await api('/api/auth/me')).user; } catch { return; }
-  $('#login').hidden = true; $('#workspace').hidden = false; $('#date').value = selectedDate;
-  $('#day').innerHTML = days.map((day, index) => `<option value="${index}">${day}</option>`).join(''); $('#day').value = weekday();
-  $('#userBadge').textContent = `${me.name} · ${roleNames[me.role]}`; $('#adminBtn').hidden = false; $('#adminBtn').textContent = me.role === 'ADMIN' ? 'Administração' : 'Histórico';
-  await load();
-}
-
-$('#loginForm').onsubmit = async event => { event.preventDefault(); try { me = (await api('/api/auth/login', { method: 'POST', body: JSON.stringify({ username: $('#username').value, password: $('#password').value }) })).user; await init(); } catch (error) { $('#loginError').textContent = error.message; } };
-$('#day').onchange = load; $('#mode').onchange = load; $('#date').onchange = () => { selectedDate = $('#date').value; $('#day').value = weekday(); load(); };
-$('#prev').onclick = () => { $('#day').value = (+$('#day').value + 5) % 6; load(); }; $('#next').onclick = () => { $('#day').value = (+$('#day').value + 1) % 6; load(); };
-$('#today').onclick = () => { $('#date').value = selectedDate = new Date().toISOString().slice(0, 10); $('#day').value = weekday(); load(); };
-$('#search').oninput = render; $('#statusFilter').onchange = render; $('#theme').onclick = () => { document.body.classList.toggle('dark'); localStorage.setItem('mapa-theme', document.body.classList.contains('dark') ? 'dark' : 'light'); };
-$('#print').onclick = () => print(); $('#logout').onclick = async () => { await api('/api/auth/logout', { method: 'POST' }); location.reload(); }; $('#adminBtn').onclick = () => admin(); document.querySelectorAll('.tabs button').forEach(button => button.onclick = () => admin(button.dataset.tab));
-if (localStorage.getItem('mapa-theme') === 'dark') document.body.classList.add('dark'); init();
+function confirmAction(title,text,button='Confirmar'){return new Promise(resolve=>{$('#confirmTitle').textContent=title;$('#confirmText').textContent=text;$('#confirmOk').textContent=button;$('#confirmDialog').showModal();const done=value=>{$('#confirmDialog').close();resolve(value)};$('#confirmCancel').onclick=()=>done(false);$('#confirmOk').onclick=()=>done(true)})}
+$$('[data-close]').forEach(button=>button.onclick=()=>document.getElementById(button.dataset.close).close());
+const empty=value=>value.trim()||null;const formatDate=value=>value?new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short'}).format(new Date(value)):'—';const actionLabel=value=>({CRIACAO:'Criação',EDICAO:'Edição',LIMPEZA:'Limpeza',RESTAURACAO:'Restauração',IMPORTACAO:'Importação'}[value]||value);function escapeHtml(value=''){return String(value).replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]))}
+boot();

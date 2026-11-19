@@ -1,18 +1,22 @@
 import 'dotenv/config';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { createRequire } from 'node:module';
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import ExcelJS from 'exceljs';
+import PDFDocument from 'pdfkit';
 import multer from 'multer';
 import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { parseRoomDocx } from './docx-parser.js';
 
 const db = new PrismaClient(); const app = express();
+const require=createRequire(import.meta.url);
+const pdfParse=require('pdf-parse/lib/pdf-parse.js') as (buffer:Buffer)=>Promise<any>;
 const roles=['ADMIN','EDITOR','VIEWER'] as const;
 const scopes=['PADRAO','DATA'] as const;
 const shifts=['MANHA','TARDE'] as const;
@@ -45,9 +49,44 @@ app.post('/api/audits/:id/restore',auth,allow('ADMIN'),async(req,res)=>{const lo
 app.get('/api/users',auth,allow('ADMIN'),async(_q,res)=>res.json({rows:await db.user.findMany({select:{id:true,name:true,username:true,role:true,active:true,createdAt:true},orderBy:{name:'asc'}})}));
 app.post('/api/users',auth,allow('ADMIN'),async(req,res)=>{const d=z.object({name:z.string().min(2),username:z.string().min(3).regex(/^[a-zA-Z0-9._-]+$/),password:z.string().min(6),role:z.enum(roles)}).safeParse(req.body);if(!d.success)return res.status(400).json({error:'Informe nome, usuário válido e senha com pelo menos 6 caracteres.'});const username=d.data.username.toLowerCase();try{const u=await db.user.create({data:{name:d.data.name,username,email:`${username}@local`,role:d.data.role,passwordHash:await bcrypt.hash(d.data.password,12)}});res.status(201).json({row:{id:u.id,name:u.name,username:u.username,role:u.role,active:u.active}})}catch{return res.status(409).json({error:'Este usuário já existe.'})}});
 app.patch('/api/users/:id',auth,allow('ADMIN'),async(req,res)=>{const d=z.object({name:z.string().min(2).optional(),role:z.enum(roles).optional(),active:z.boolean().optional(),password:z.string().min(6).optional()}).safeParse(req.body);if(!d.success)return res.status(400).json({error:'Dados inválidos.'});const data:any={...d.data};if(data.password){data.passwordHash=await bcrypt.hash(data.password,12);delete data.password}res.json({row:await db.user.update({where:{id:String(req.params.id)},data})});});
+app.delete('/api/users/:id',auth,allow('ADMIN'),async(req,res)=>{const id=String(req.params.id);if(id===req.user!.id)return res.status(400).json({error:'Você não pode excluir a própria conta.'});await db.user.delete({where:{id}});res.status(204).end();});
+app.post('/api/assignments/clear-row',auth,allow('EDITOR'),async(req,res)=>{const parsed=z.object({room:z.number().int().min(1).max(17),shift:z.enum(shifts)}).safeParse(req.body);if(!parsed.success)return res.status(400).json({error:'Sala ou turno inválido.'});const rows=await db.assignment.findMany({where:{room:parsed.data.room,shift:parsed.data.shift,scope:'PADRAO'}});for(const old of rows){const saved=await db.assignment.update({where:{id:old.id},data:{status:'LIVRE',professional:null,code:null,specialty:null,operator:null,notes:null,rawText:null,needsReview:false,updatedById:req.user!.id,version:{increment:1}}});await audit(req.user!.id,'LIMPEZA',saved,clean(old),clean(saved));}res.json({ok:true,count:rows.length});});
 app.post('/api/duplicate-week',auth,allow('ADMIN','EDITOR'),async(req,res)=>{const d=z.object({fromWeekday:z.number().int().min(0).max(5),toWeekday:z.number().int().min(0).max(5)}).parse(req.body);const source=await db.assignment.findMany({where:{scope:'PADRAO',weekday:d.fromWeekday}});await db.$transaction(source.map(a=>db.assignment.upsert({where:{room_weekday_scope_shift:{room:a.room,weekday:d.toWeekday,scope:'PADRAO',shift:a.shift}},update:{status:a.status,professional:a.professional,code:a.code,specialty:a.specialty,operator:a.operator,notes:a.notes,rawText:a.rawText,needsReview:a.needsReview,updatedById:req.user!.id,version:{increment:1}},create:{...clean(a),id:undefined,weekday:d.toWeekday,updatedById:req.user!.id}} as any)));res.json({ok:true});});
-app.post('/api/import/preview',auth,allow('ADMIN'),upload.single('file'),async(req,res)=>{if(!req.file||!req.file.originalname.toLowerCase().endsWith('.docx'))return res.status(400).json({error:'Envie um arquivo Word .docx.'});try{res.json({rows:parseRoomDocx(req.file.buffer),warning:'Todos os registros são inicialmente marcados para revisão. O texto original é preservado em observações.'})}catch{return res.status(400).json({error:'Não foi possível ler este documento Word.'})}});
-app.post('/api/import/confirm',auth,allow('ADMIN'),async(req,res)=>{const payload=z.array(assignmentSchema).max(300).safeParse(req.body.rows);if(!payload.success)return res.status(400).json({error:'Prévia de importação inválida.'});for(const d of payload.data){const old=await db.assignment.findFirst({where:{room:d.room,weekday:d.weekday??0,scope:'PADRAO',shift:d.shift}});if(old){const saved=await db.assignment.update({where:{id:old.id},data:{...d,date:null,updatedById:req.user!.id,version:{increment:1}} as any});await audit(req.user!.id,'IMPORTACAO',saved,clean(old),clean(saved));}}res.json({ok:true,count:payload.data.length})});
+app.post('/api/import/preview',auth,allow('EDITOR'),upload.single('file'),async(req,res)=>{if(!req.file)return res.status(400).json({error:'Selecione um arquivo PDF ou Word.'});try{const name=req.file.originalname.toLowerCase();if(name.endsWith('.docx'))return res.json({rows:parseRoomDocx(req.file.buffer),warning:'Revise os dados reconhecidos antes de confirmar.'});if(name.endsWith('.pdf')){const parsed=await pdfParse(req.file.buffer);const subject=String(parsed.info?.Subject||'');if(!subject.startsWith('MAPA_JSON:'))return res.status(400).json({error:'Este PDF não foi gerado pelo Mapa de Salas. Use um PDF exportado pelo próprio sistema.'});const rows=JSON.parse(Buffer.from(subject.slice(10),'base64').toString('utf8'));return res.json({rows,warning:'PDF reconhecido. Confira os registros antes de importar.'});}return res.status(400).json({error:'Formato não aceito. Envie PDF ou DOCX.'});}catch{return res.status(400).json({error:'Não foi possível ler este arquivo.'})}});
+app.post('/api/import/confirm',auth,allow('EDITOR'),async(req,res)=>{const payload=z.array(assignmentSchema).max(300).safeParse(req.body.rows);if(!payload.success)return res.status(400).json({error:'Prévia de importação inválida.'});for(const d of payload.data){const old=await db.assignment.findFirst({where:{room:d.room,weekday:d.weekday??0,scope:'PADRAO',shift:d.shift}});if(old){const saved=await db.assignment.update({where:{id:old.id},data:{...d,date:null,updatedById:req.user!.id,version:{increment:1}} as any});await audit(req.user!.id,'IMPORTACAO',saved,clean(old),clean(saved));}}res.json({ok:true,count:payload.data.length})});
+app.get('/api/export.pdf',auth,async(_req,res)=>{
+  const rows=await db.assignment.findMany({where:{scope:'PADRAO'},orderBy:[{shift:'asc'},{room:'asc'},{weekday:'asc'}]});
+  const exportRows=rows.map(({id,updatedAt,updatedById,...row})=>({...row,date:null}));
+  const doc=new PDFDocument({size:'A4',layout:'landscape',margin:28,info:{Title:'Mapa de Salas - 3º piso',Subject:`MAPA_JSON:${Buffer.from(JSON.stringify(exportRows)).toString('base64')}`}});
+  res.setHeader('Content-Type','application/pdf');
+  res.setHeader('Content-Disposition','attachment; filename="mapa-de-salas.pdf"');
+  doc.pipe(res);
+  const dayNames=['SEGUNDA','TERÇA','QUARTA','QUINTA','SEXTA','SÁBADO'];
+  for(const [pageIndex,shift] of shifts.entries()){
+    if(pageIndex)doc.addPage();
+    doc.fillColor('#15324b').fontSize(18).font('Helvetica-Bold').text('MAPA DE SALAS - 3º PISO',28,28);
+    doc.fontSize(10).fillColor('#64748b').text(shift==='MANHA'?'MANHÃ':'TARDE',28,55);
+    const left=28,top=72,rowH=25,roomW=54,colW=(doc.page.width-left*2-roomW)/6;
+    doc.fontSize(7).font('Helvetica-Bold');
+    doc.rect(left,top,roomW,rowH).fill('#15324b');
+    doc.fillColor('white').text('SALA',left+5,top+10,{width:roomW-10,align:'center'});
+    dayNames.forEach((day,i)=>{const x=left+roomW+i*colW;doc.rect(x,top,colW,rowH).fill('#15324b');doc.fillColor('white').text(day,x+3,top+10,{width:colW-6,align:'center'});});
+    for(let room=1;room<=17;room++){
+      const y=top+room*rowH;
+      doc.rect(left,y,roomW,rowH).fill(room%2?'#eef4f7':'#e2edf2');
+      doc.fillColor('#15324b').font('Helvetica-Bold').fontSize(8).text(String(room).padStart(2,'0'),left+4,y+8,{width:roomW-8,align:'center'});
+      for(let day=0;day<6;day++){
+        const x=left+roomW+day*colW;
+        const item=rows.find(row=>row.room===room&&row.weekday===day&&row.shift===shift);
+        doc.rect(x,y,colW,rowH).fillAndStroke(item?.status==='LIVRE'?'#f8fafc':'#edf9f3','#cbd5e1');
+        const label=item?.status==='LIVRE'?'LIVRE':[item?.professional,item?.code,item?.specialty].filter(Boolean).join(' - ');
+        doc.fillColor(item?.status==='LIVRE'?'#94a3b8':'#123b31').font(item?.status==='LIVRE'?'Helvetica':'Helvetica-Bold').fontSize(5.8).text(label||'LIVRE',x+3,y+4,{width:colW-6,height:rowH-6,align:'center',ellipsis:true});
+      }
+    }
+    doc.font('Helvetica').fontSize(7).fillColor('#64748b').text(`Gerado em ${new Date().toLocaleString('pt-BR')}`,left,540,{width:doc.page.width-left*2,align:'right'});
+  }
+  doc.end();
+});
 app.get('/api/export.xlsx',auth,async(req,res)=>{const rows=await db.assignment.findMany({where:{scope:'PADRAO'},orderBy:[{weekday:'asc'},{room:'asc'},{shift:'asc'}]});const book=new ExcelJS.Workbook();const ws=book.addWorksheet('Mapa de Salas');ws.columns=[{header:'Dia',key:'day',width:14},{header:'Sala',key:'room',width:10},{header:'Turno',key:'shift',width:12},{header:'Status',key:'status',width:14},{header:'Profissional',key:'professional',width:30},{header:'Código',key:'code',width:14},{header:'Especialidade',key:'specialty',width:28},{header:'Operador',key:'operator',width:22},{header:'Observações',key:'notes',width:42}];const days=['Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];rows.forEach(a=>ws.addRow({...a,day:days[a.weekday!],room:`Sala ${String(a.room).padStart(2,'0')}`,shift:a.shift==='MANHA'?'Manhã':'Tarde'}));ws.getRow(1).font={bold:true,color:{argb:'FFFFFFFF'}};ws.getRow(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF16324F'}};res.setHeader('Content-Disposition','attachment; filename="mapa-de-salas.xlsx"');res.setHeader('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');await book.xlsx.write(res);res.end();});
 app.use(express.static(path.join(process.cwd(),'src','public')));app.get('*',(_q,res)=>res.sendFile(path.join(process.cwd(),'src','public','index.html')));
 ensureSeed().then(()=>app.listen(Number(process.env.PORT||3000),()=>console.log('Mapa de Salas iniciado'))).catch(e=>{console.error(e);process.exit(1)});

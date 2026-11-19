@@ -42,7 +42,7 @@ model Assignment {
 model Audit {
   id String @id @default(cuid())
   assignmentId String?
-  userId String
+  userId String?
   room Int?
   weekday Int?
   date DateTime?
@@ -52,6 +52,6 @@ model Audit {
   before Json?
   after Json?
   createdAt DateTime @default(now())
-  user User @relation(fields:[userId], references:[id])
+  user User? @relation(fields:[userId], references:[id], onDelete: SetNull)
   @@index([createdAt])
 }
