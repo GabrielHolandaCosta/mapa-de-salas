@@ -6,7 +6,7 @@ Aplicação web independente para as salas 01 a 17. Usa banco local SQLite, aute
 
 - Grade semanal com as salas 01 a 17 nas linhas e segunda a sábado nas colunas, separada por manhã e tarde.
 - Layout próprio para celular, pesquisa, tema escuro, impressão e estados visuais para livre, ocupada, reservada e fechada.
-- Exportação em PDF com duas páginas organizadas (manhã e tarde) e reimportação segura do PDF gerado pelo sistema.
+- Exportação organizada em Word e Excel, com reimportação segura dos arquivos gerados pelo sistema.
 - Importação conservadora de `.docx`: lê somente as salas 01–17 e conserva o conteúdo original para revisão.
 - Perfis separados: `ADMIN` gerencia contas, `EDITOR` altera o mapa e `VIEWER` consulta o mapa e o histórico.
 - Confirmação antes de limpar uma célula, uma linha inteira ou excluir um usuário.
@@ -29,9 +29,9 @@ npm run dev
 
 Para testes, os valores padrão são usuário `admin` e senha `123456`. Troque a senha antes de publicar o sistema.
 
-## Importação de PDF ou Word
+## Importação de Word ou Excel
 
-Entre com uma conta de editor, clique em **Importar PDF/Word** e confira a quantidade reconhecida antes de confirmar. O PDF deve ter sido exportado pelo próprio sistema; arquivos Word `.docx` no formato original também são aceitos.
+Entre com uma conta de editor, clique em **Importar Word/Excel** e confira a quantidade reconhecida antes de confirmar. São aceitos arquivos Word `.docx` no formato do mapa e planilhas Excel `.xlsx` exportadas pelo próprio sistema.
 
 O parser não assume campos incertos: mantém o texto integral de cada célula em observações; código e especialidade só são sugeridos quando identificáveis. A revisão é obrigatória (`needsReview`).
 

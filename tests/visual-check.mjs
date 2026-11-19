@@ -4,7 +4,8 @@ import path from 'node:path';
 const output = process.argv[2] || process.cwd();
 const edge = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
 const username = `visual${Date.now()}`;
-let userId;
+const viewerUsername = `viewer${Date.now()}`;
+const userIds=[];
 const browser = await chromium.launch({ executablePath: edge, headless: true });
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 1 });
@@ -14,18 +15,29 @@ try {
   await page.locator('#loginForm button').click();
   await page.waitForSelector('#adminPage:not([hidden])');
   await page.screenshot({ path: path.join(output, 'mapa-admin.png'), fullPage: true });
-  userId = await page.evaluate(async credentials => {
+  userIds.push(await page.evaluate(async credentials => {
     const response = await fetch('/api/users', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(credentials) });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
     return data.row.id;
-  }, { name:'Teste Visual', username, password:'123456', role:'EDITOR' });
+  }, { name:'Teste Visual', username, password:'123456', role:'EDITOR' }));
+  userIds.push(await page.evaluate(async credentials => {
+    const response = await fetch('/api/users', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(credentials) });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error);
+    return data.row.id;
+  }, { name:'Teste Visualizador', username:viewerUsername, password:'123456', role:'VIEWER' }));
   await page.locator('#adminLogout').click();
   await page.locator('#username').fill(username);
   await page.locator('#password').fill('123456');
   await page.locator('#loginForm button').click();
   await page.waitForSelector('#workspace:not([hidden])');
+  if (await page.locator('#logsBtn').isVisible()) throw new Error('Editor não pode visualizar o histórico');
+  if (!await page.locator('a[href="/api/export.docx"]').isVisible()) throw new Error('A exportação Word não está disponível');
+  if (!await page.locator('a[href="/api/export.xlsx"]').isVisible()) throw new Error('A exportação Excel não está disponível');
   await page.screenshot({ path: path.join(output, 'mapa-desktop.png'), fullPage: true });
+  await page.locator('#theme').click();
+  await page.screenshot({ path: path.join(output, 'mapa-desktop-dark.png'), fullPage: true });
   await page.setViewportSize({ width:390, height:844 });
   await page.reload();
   await page.waitForSelector('#workspace:not([hidden])');
@@ -34,12 +46,20 @@ try {
   await page.locator('#mobileSchedule [data-cell]').first().click();
   await page.waitForSelector('#cellDialog[open]');
   await page.screenshot({ path: path.join(output, 'mapa-mobile-editor.png'), fullPage: true });
+  await page.locator('[data-close="cellDialog"]').click();
+  await page.locator('#logout').click();
+  await page.locator('#username').fill(viewerUsername);
+  await page.locator('#password').fill('123456');
+  await page.locator('#loginForm button').click();
+  await page.waitForSelector('#workspace:not([hidden])');
+  if (!await page.locator('#logsBtn').isVisible()) throw new Error('Visualizador precisa enxergar o histórico');
+  if (await page.locator('#importBtn').isVisible()) throw new Error('Visualizador não pode importar arquivos');
 } finally {
   await browser.close();
-  if (userId) {
+  if (userIds.length) {
     const context = await request.newContext({ baseURL:'http://localhost:3000' });
     await context.post('/api/auth/login', { data:{ username:'admin', password:'123456' } });
-    await context.delete(`/api/users/${userId}`);
+    for(const id of userIds) await context.delete(`/api/users/${id}`);
     await context.dispose();
   }
 }

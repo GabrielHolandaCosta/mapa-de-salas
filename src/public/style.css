@@ -4,3 +4,17 @@
 @media(max-width:720px){.login-page{grid-template-columns:1fr}.login-visual{display:none}.login-panel{padding:28px 22px}.login-box .brand{margin-bottom:55px}.login-box h1{font-size:36px}.topbar{height:66px;padding:0 14px}.topbar .brand small,.user-chip{display:none}.content{padding:28px 13px 50px}.hero{align-items:flex-start}.hero h1{font-size:28px}.hero-summary{padding-left:13px}.hero-summary span{font-size:27px}.hero-summary small{display:none}.control-actions{display:grid;grid-template-columns:1fr 1fr}.search-box{grid-column:1/-1}.secondary{text-align:center;font-size:11px}.legend{gap:10px;overflow:auto}.legend span{white-space:nowrap}.form-grid{grid-template-columns:1fr}.form-grid .full{grid-column:auto}.modal-actions{flex-wrap:wrap}.modal-actions span{display:none}.admin-heading{align-items:flex-start;gap:20px}.admin-heading h1{font-size:28px}.role-explain{display:none}.user-row{grid-template-columns:1fr;gap:9px}.user-actions{justify-content:flex-end}.admin-content{padding:32px 14px}.drawer{padding:18px}.mini-grid{grid-template-columns:repeat(3,70px)}}
 @media print{.topbar,.control-card,.legend,.editor-only,.row-action{display:none!important}.content{padding:0}.hero{margin:0 0 10px}.schedule-shell{box-shadow:none}.table-scroll{display:block;overflow:visible}.schedule-table{min-width:0;font-size:8px}.schedule-table td,.cell-button{height:55px}.mobile-schedule{display:none}.schedule-table th:last-child,.schedule-table td:last-child{display:none}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+.dark .icon-button{background:#203543;color:#f2fbfc;border:1px solid #38505e}
+.dark .icon-button:hover{background:#294555;color:#75dec9}
+.dark .text-button{color:#d8e7eb}
+.dark label{color:#d1e0e4}
+.dark .shift-switch button{color:#b9cbd1}
+.dark .shift-switch button.active{background:#087f73;color:#fff}
+.dark .room-label{color:#f2fbfc}
+.dark .row-action button{color:#c2d5db}
+.dark .close{background:#263b47;color:#f3fbfc}
+.dark .role-icon{color:#102936}
+.dark .danger-button{background:#3a2228;color:#ffabb3;border-color:#743942}
+.dark .save-state,.dark .status-active{color:#70dfc9!important}
+.dark .overline{color:#70dfc9}
+.dark .form-error{color:#ff9da6}
