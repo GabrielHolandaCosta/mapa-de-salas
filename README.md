@@ -24,7 +24,9 @@ npm run db:seed
 npm run dev
 ```
 
-4. Abra `http://localhost:3000` e entre com `ADMIN_EMAIL` e `ADMIN_PASSWORD` configurados no `.env`.
+4. Abra `http://localhost:3000` e entre com `ADMIN_USER` e `ADMIN_PASSWORD` configurados no `.env`.
+
+Para testes, os valores padrão são usuário `admin` e senha `123456`. Troque a senha antes de publicar o sistema.
 
 ## Importação do Word
 
@@ -32,11 +34,17 @@ Entre como administrador, abra **Administração > Importação**, envie o arqui
 
 O parser não assume campos incertos: mantém o texto integral de cada célula em observações; código e especialidade só são sugeridos quando identificáveis. A revisão é obrigatória (`needsReview`).
 
+O documento de 2026 foi validado com 170 registros: 85 de manhã e 85 à tarde, cobrindo as salas 01 a 17. Para repetir a verificação:
+
+```powershell
+npm run verify:word -- "C:\Users\gabrielcosta\Desktop\MAPA DE SALAS 3 PISO -NOVO - 2026 - para mesclagem.docx"
+```
+
 ## Railway
 
 1. Envie este repositório para GitHub e crie um projeto no Railway.
 2. Adicione um serviço PostgreSQL e vincule `DATABASE_URL`.
-3. Configure `JWT_SECRET` (valor longo aleatório), `ADMIN_NAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` e `NODE_ENV=production`.
+3. Configure `JWT_SECRET` (valor longo aleatório), `ADMIN_NAME`, `ADMIN_USER`, `ADMIN_PASSWORD` e `NODE_ENV=production`.
 4. O Railway usa `railway.toml`: aplica o esquema, semeia somente o primeiro administrador e inicia a aplicação.
 
 Use HTTPS em produção; assim o cookie de sessão passa a ser `Secure` automaticamente.
