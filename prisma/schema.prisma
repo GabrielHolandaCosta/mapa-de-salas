@@ -1,0 +1,83 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+
+enum Role { 
+  ADMIN
+  EDITOR
+  VIEWER
+}
+enum RoomStatus { 
+  LIVRE
+  OCUPADA
+  RESERVADA
+  FECHADA
+}
+enum Shift { 
+  MANHA
+  TARDE
+}
+enum Scope { 
+  PADRAO
+  DATA
+}
+enum AuditAction { 
+  CRIACAO
+  EDICAO
+  LIMPEZA
+  RESTAURACAO
+  IMPORTACAO
+}
+
+model User {
+  id String @id @default(cuid())
+  name String
+  email String @unique
+  passwordHash String
+  role Role @default(VIEWER)
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  audits Audit[]
+}
+model Assignment {
+  id String @id @default(cuid())
+  room Int
+  weekday Int?
+  date DateTime? @db.Date
+  scope Scope
+  shift Shift
+  status RoomStatus @default(LIVRE)
+  professional String?
+  code String?
+  specialty String?
+  operator String?
+  notes String?
+  rawText String?
+  needsReview Boolean @default(false)
+  version Int @default(1)
+  updatedAt DateTime @updatedAt
+  updatedById String?
+  @@unique([room, weekday, scope, shift])
+  @@index([date, room, shift])
+}
+model Audit {
+  id String @id @default(cuid())
+  assignmentId String?
+  userId String
+  room Int?
+  weekday Int?
+  date DateTime? @db.Date
+  scope Scope?
+  shift Shift?
+  action AuditAction
+  before Json?
+  after Json?
+  createdAt DateTime @default(now())
+  user User @relation(fields:[userId], references:[id])
+  @@index([createdAt])
+}

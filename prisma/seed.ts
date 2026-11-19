@@ -1,0 +1,2 @@
+import 'dotenv/config'; import {PrismaClient} from '@prisma/client'; import bcrypt from 'bcryptjs';
+const db=new PrismaClient(); async function main(){const email=(process.env.ADMIN_EMAIL||'admin@local').toLowerCase();if(!await db.user.findUnique({where:{email}}))await db.user.create({data:{name:process.env.ADMIN_NAME||'Administrador',email,passwordHash:await bcrypt.hash(process.env.ADMIN_PASSWORD||'troque-esta-senha',12),role:'ADMIN'}})} main().finally(()=>db.$disconnect());
