@@ -24,7 +24,14 @@ type AuditAction='CRIACAO'|'EDICAO'|'LIMPEZA'|'RESTAURACAO'|'IMPORTACAO';
 const upload=multer({storage:multer.memoryStorage(),limits:{fileSize:8*1024*1024}});
 const secret = process.env.JWT_SECRET || 'development-only-change-me';
 app.set('trust proxy', 1); app.use(express.json({limit:'1mb'})); app.use(cookieParser());
-app.use('/api/auth/login', rateLimit({windowMs:15*60_000,max:10,standardHeaders:true,legacyHeaders:false}));
+app.use('/api/auth/login', rateLimit({
+  windowMs:15*60_000,
+  max:10,
+  standardHeaders:true,
+  legacyHeaders:false,
+  skipSuccessfulRequests:true,
+  message:{error:'Muitas tentativas de acesso. Aguarde alguns minutos e tente novamente.'}
+}));
 type AuthUser={id:string;name:string;username:string;role:Role};
 declare global { namespace Express { interface Request { user?:AuthUser } } }
 function token(u:AuthUser){return jwt.sign(u,secret,{expiresIn:'8h'});}

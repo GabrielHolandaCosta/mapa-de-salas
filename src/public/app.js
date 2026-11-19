@@ -3,7 +3,7 @@ const days=['Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
 const state={user:null,shift:'MANHA',rows:new Map(),selected:null,importRows:null,search:''};
 const key=(room,day,shift=state.shift)=>`${room}-${day}-${shift}`;
 
-async function api(url,options={}){const response=await fetch(url,{headers:{...(options.body instanceof FormData?{}:{'Content-Type':'application/json'}),...(options.headers||{})},...options});if(response.status===401){showLogin();throw new Error('Sua sessão expirou. Entre novamente.')}if(response.status===204)return null;const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||'Não foi possível concluir esta ação.');return data}
+async function api(url,options={}){const response=await fetch(url,{headers:{...(options.body instanceof FormData?{}:{'Content-Type':'application/json'}),...(options.headers||{})},...options});if(response.status===401){showLogin();throw new Error('Sua sessão expirou. Entre novamente.')}if(response.status===204)return null;const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||(response.status===429?'Muitas tentativas de acesso. Aguarde alguns minutos e tente novamente.':'Não foi possível concluir esta ação.'));return data}
 function showLogin(){state.user=null;$('#workspace').hidden=true;$('#adminPage').hidden=true;$('#login').hidden=false}
 function toast(message){const el=$('#toast');el.textContent=message;el.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('show'),2600)}
 function setTheme(dark){document.documentElement.classList.toggle('dark',dark);localStorage.setItem('mapa-theme',dark?'dark':'light')}
