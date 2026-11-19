@@ -3,5 +3,6 @@ node_modules
 dist
 coverage
 *.log
+.server.pid
 prisma/*.db
 prisma/*.db-journal
