@@ -1,5 +1,6 @@
 import AdmZip from 'adm-zip';
-import type { RoomStatus, Shift } from '@prisma/client';
+type RoomStatus = 'LIVRE' | 'OCUPADA' | 'RESERVADA' | 'FECHADA';
+type Shift = 'MANHA' | 'TARDE';
 
 const text = (value: string) => value
   .replace(/<w:tab\/>/g, ' ')

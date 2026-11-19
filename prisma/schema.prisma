@@ -2,35 +2,8 @@ generator client {
   provider = "prisma-client-js"
 }
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url = env("DATABASE_URL")
-}
-
-enum Role { 
-  ADMIN
-  EDITOR
-  VIEWER
-}
-enum RoomStatus { 
-  LIVRE
-  OCUPADA
-  RESERVADA
-  FECHADA
-}
-enum Shift { 
-  MANHA
-  TARDE
-}
-enum Scope { 
-  PADRAO
-  DATA
-}
-enum AuditAction { 
-  CRIACAO
-  EDICAO
-  LIMPEZA
-  RESTAURACAO
-  IMPORTACAO
 }
 
 model User {
@@ -39,7 +12,7 @@ model User {
   username String? @unique
   email String @unique
   passwordHash String
-  role Role @default(VIEWER)
+  role String @default("VIEWER")
   active Boolean @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -49,10 +22,10 @@ model Assignment {
   id String @id @default(cuid())
   room Int
   weekday Int?
-  date DateTime? @db.Date
-  scope Scope
-  shift Shift
-  status RoomStatus @default(LIVRE)
+  date DateTime?
+  scope String
+  shift String
+  status String @default("LIVRE")
   professional String?
   code String?
   specialty String?
@@ -72,10 +45,10 @@ model Audit {
   userId String
   room Int?
   weekday Int?
-  date DateTime? @db.Date
-  scope Scope?
-  shift Shift?
-  action AuditAction
+  date DateTime?
+  scope String?
+  shift String?
+  action String
   before Json?
   after Json?
   createdAt DateTime @default(now())

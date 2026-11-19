@@ -18,13 +18,8 @@ if errorlevel 1 (
 )
 
 if not exist ".env" (
-  echo.
-  echo O arquivo .env ainda nao foi configurado.
-  echo Copie .env.example para .env e informe o DATABASE_URL, JWT_SECRET
-  echo e as credenciais iniciais do administrador.
-  echo Consulte o README.md para o passo a passo.
-  pause
-  exit /b 1
+  echo Criando a configuracao local automaticamente...
+  copy /y ".env.example" ".env" >nul
 )
 
 if not exist "node_modules" (

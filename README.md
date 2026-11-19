@@ -1,6 +1,6 @@
 # Mapa de Salas
 
-Aplicação web independente para as salas 01 a 17. Usa PostgreSQL, autenticação por sessão HTTP-only, funções por perfil e registros auditáveis.
+Aplicação web independente para as salas 01 a 17. Usa banco local SQLite, autenticação por sessão HTTP-only, funções por perfil e registros auditáveis.
 
 ## Recursos
 
@@ -13,9 +13,10 @@ Aplicação web independente para as salas 01 a 17. Usa PostgreSQL, autenticaç�
 
 ## Rodar localmente
 
-1. Instale Node.js 20+ e PostgreSQL 15+.
-2. Copie `.env.example` para `.env` e configure `DATABASE_URL`, `JWT_SECRET` e as credenciais iniciais do administrador.
-3. Na pasta do projeto, execute:
+1. Instale o Node.js 20 ou superior.
+2. Dê dois cliques em `INICIAR_MAPA_DE_SALAS.bat`. Na primeira abertura, ele cria a configuração e o banco automaticamente.
+
+Se preferir iniciar pelo terminal, execute:
 
 ```powershell
 npm install
@@ -24,7 +25,7 @@ npm run db:seed
 npm run dev
 ```
 
-4. Abra `http://localhost:3000` e entre com `ADMIN_USER` e `ADMIN_PASSWORD` configurados no `.env`.
+3. Abra `http://localhost:3000` e entre com `ADMIN_USER` e `ADMIN_PASSWORD` configurados no `.env`.
 
 Para testes, os valores padrão são usuário `admin` e senha `123456`. Troque a senha antes de publicar o sistema.
 
@@ -43,9 +44,9 @@ npm run verify:word -- "C:\Users\gabrielcosta\Desktop\MAPA DE SALAS 3 PISO -NOVO
 ## Railway
 
 1. Envie este repositório para GitHub e crie um projeto no Railway.
-2. Adicione um serviço PostgreSQL e vincule `DATABASE_URL`.
-3. Configure `JWT_SECRET` (valor longo aleatório), `ADMIN_NAME`, `ADMIN_USER`, `ADMIN_PASSWORD` e `NODE_ENV=production`.
-4. O Railway usa `railway.toml`: aplica o esquema, semeia somente o primeiro administrador e inicia a aplicação.
+2. Adicione um Volume persistente ao serviço, montado em `/data`.
+3. Configure `DATABASE_URL=file:/data/mapa-de-salas.db`, `JWT_SECRET` (valor longo aleatório), `ADMIN_NAME`, `ADMIN_USER`, `ADMIN_PASSWORD` e `NODE_ENV=production`.
+4. O Railway usa `railway.toml`: cria o banco no volume, semeia somente o primeiro administrador e inicia a aplicação.
 
 Use HTTPS em produção; assim o cookie de sessão passa a ser `Secure` automaticamente.
 
