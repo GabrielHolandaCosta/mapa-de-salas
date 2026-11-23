@@ -1,5 +1,7 @@
 import { setupHelp } from './help.js?v=4';
 const $=s=>document.querySelector(s==='#shiftSwitch'?'.shift-switch':s), $$=s=>[...document.querySelectorAll(s)];
+const roomMark='<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M8 9h24v22H8zM8 17h24M16 9v22M24 9v22"/><circle cx="12" cy="13" r="1.3"/><circle cx="20" cy="13" r="1.3"/><circle cx="28" cy="13" r="1.3"/></svg>';
+$$('.brand-icon').forEach(icon=>{icon.innerHTML=roomMark;icon.setAttribute('aria-hidden','true')});
 const days=['Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
 const services={18:'ECO',19:'MAPA / HOLTER',20:'ECG',21:'T. ERGO / ESPIRO',22:'EEG'};
 const state={user:null,shift:'MANHA',area:'ROOMS',rows:new Map(),selected:null,importRows:null,search:'',instanceId:null,updating:false};
@@ -40,7 +42,8 @@ $('#fieldStatus').addEventListener('change',async event=>{if(state.user?.role!==
 $('#clearCell').onclick=async()=>{if(await confirmAction('Limpar esta célula?','Os dados desta sala e deste dia ficarão vazios. O histórico será preservado.','Limpar')){const {row}=state.selected;const values={...row,status:'LIVRE',professional:null,code:null,specialty:null,operator:null,notes:null,rawText:null,date:null};await api(`/api/assignments/${row.id}`,{method:'PUT',body:JSON.stringify(values)});clearCellDraft();$('#cellDialog').close();await loadMatrix();toast('Célula limpa')}};
 async function clearRow(room){const label=services[room]||`Sala ${String(room).padStart(2,'0')}`;if(!await confirmAction(`Limpar ${label}?`,`Todos os registros de ${state.shift==='MANHA'?'manhã':'tarde'}, de segunda a sábado, serão limpos. O histórico continuará disponível.`,'Limpar linha'))return;await api('/api/assignments/clear-row',{method:'POST',body:JSON.stringify({room,shift:state.shift})});await loadMatrix();toast('Linha limpa com segurança')}
 
-$('#logsBtn').onclick=()=>openHistory();$('#cellHistory').onclick=()=>openHistory(state.selected?.room);$('#closeHistory').onclick=closeHistory;$('#drawerBackdrop').onclick=closeHistory;
+function closeDialogSmooth(dialog){return new Promise(resolve=>{if(!dialog?.open)return resolve();dialog.classList.add('is-closing');let finished=false;const done=()=>{if(finished)return;finished=true;dialog.classList.remove('is-closing');dialog.close();resolve()};dialog.addEventListener('animationend',done,{once:true});setTimeout(done,220)})}
+$('#logsBtn').onclick=()=>openHistory();$('#cellHistory').onclick=async()=>{const room=state.selected?.room;await closeDialogSmooth($('#cellDialog'));openHistory(room)};$('#closeHistory').onclick=closeHistory;$('#drawerBackdrop').onclick=closeHistory;
 async function openHistory(room){if(state.user?.role!=='VIEWER')return toast('O histórico é exclusivo do perfil Visualizador.');const query=new URLSearchParams();if(room)query.set('room',room);query.set('shift',state.shift);const {rows}=await api(`/api/audits?${query}`);$('#historyList').innerHTML=rows.length?rows.map(log=>`<article class="history-item"><b>${actionLabel(log.action)} · Sala ${String(log.room||0).padStart(2,'0')}</b><p>${log.user?.name||'Usuário'} alterou o turno da ${log.shift==='MANHA'?'manhã':'tarde'}.</p><time>${formatDate(log.createdAt)}</time></article>`).join(''):'<p class="lead">Nenhuma alteração encontrada.</p>';$('#historyDrawer').classList.add('open');$('#drawerBackdrop').classList.add('open');$('#historyDrawer').setAttribute('aria-hidden','false')}
 function closeHistory(){$('#historyDrawer').classList.remove('open');$('#drawerBackdrop').classList.remove('open');$('#historyDrawer').setAttribute('aria-hidden','true')}
 

@@ -38,6 +38,7 @@ try {
   await page.screenshot({ path: path.join(output, 'mapa-ajuda-editor.png'), fullPage: true });
   await page.locator('.help-close').click();
   await page.waitForTimeout(600);
+  if(await page.locator('#workspace .brand-icon svg').count()!==1)throw new Error('O símbolo de salas não foi aplicado à marca');
   if (await page.locator('#logsBtn').isVisible()) throw new Error('Editor não pode visualizar o histórico');
   if (!await page.locator('a[href="/api/export.docx"]').isVisible()) throw new Error('A exportação Word não está disponível');
   if (!await page.locator('a[href="/api/export.xlsx"]').isVisible()) throw new Error('A exportação Excel não está disponível');
@@ -74,6 +75,11 @@ try {
   await page.waitForTimeout(600);
   if (!await page.locator('#logsBtn').isVisible()) throw new Error('Visualizador precisa enxergar o histórico');
   if (await page.locator('#importBtn').isVisible()) throw new Error('Visualizador não pode importar arquivos');
+  await page.locator('#mobileSchedule [data-cell]').first().click();
+  await page.waitForSelector('#cellDialog[open]');
+  await page.locator('#cellHistory').click();
+  await page.waitForSelector('#historyDrawer.open');
+  if(await page.locator('#cellDialog').evaluate(dialog=>dialog.open))throw new Error('A janela da sala permaneceu aberta sobre o histórico');
 } finally {
   await browser.close();
   if (userIds.length) {
