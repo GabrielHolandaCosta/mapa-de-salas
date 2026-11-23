@@ -38,6 +38,8 @@ try {
   await page.screenshot({ path: path.join(output, 'mapa-ajuda-editor.png'), fullPage: true });
   await page.locator('.help-close').click();
   await page.waitForTimeout(600);
+  const editorHelpSeen=await page.evaluate(async()=>{const response=await fetch('/api/auth/me');return (await response.json()).user.helpSeen});
+  if(!editorHelpSeen)throw new Error('O primeiro acesso não foi registrado no usuário');
   if(await page.locator('#workspace .brand-icon svg').count()!==1)throw new Error('O símbolo de salas não foi aplicado à marca');
   if (await page.locator('#logsBtn').isVisible()) throw new Error('Editor não pode visualizar o histórico');
   if (!await page.locator('a[href="/api/export.docx"]').isVisible()) throw new Error('A exportação Word não está disponível');
@@ -80,6 +82,13 @@ try {
   await page.locator('#cellHistory').click();
   await page.waitForSelector('#historyDrawer.open');
   if(await page.locator('#cellDialog').evaluate(dialog=>dialog.open))throw new Error('A janela da sala permaneceu aberta sobre o histórico');
+  await page.locator('#logout').click();
+  await page.fill('#username',viewerUsername);
+  await page.fill('#password','123456');
+  await page.click('#loginForm button[type="submit"]');
+  await page.waitForSelector('#workspace:not([hidden])');
+  await page.waitForTimeout(900);
+  if(await page.locator('.help-dialog[open]').count())throw new Error('O guia abriu novamente depois do primeiro acesso');
 } finally {
   await browser.close();
   if (userIds.length) {

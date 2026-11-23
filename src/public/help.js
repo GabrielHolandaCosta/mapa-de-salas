@@ -16,6 +16,23 @@ const editorSlides=[
 
 let initialized=false,user=null,slides=[],index=0,dialog,visual,title,text,tips,step,dots,previous,next;
 
+const seenKey=account=>`mapa-help-seen:${account.id||account.username}`;
+function wasSeen(account){
+  if(account.helpSeen)return true;
+  try{return localStorage.getItem(seenKey(account))==='1'}catch{return false}
+}
+async function markAsSeen(){
+  if(!user||user.helpSeen)return;
+  user.helpSeen=true;
+  try{localStorage.setItem(seenKey(user),'1')}catch{}
+  try{
+    const response=await fetch('/api/help/seen',{method:'PUT',credentials:'same-origin'});
+    if(!response.ok)throw new Error('Não foi possível registrar a ajuda como visualizada.');
+  }catch(error){
+    console.warn(error);
+  }
+}
+
 function visualMarkup(kind){
   if(kind==='search')return `<div class="help-shot"><div class="shot-tabs"><b>Salas 01–17</b><span>Serviços especiais</span></div><div class="shot-search"><i>⌕</i><strong>Sala 02</strong></div><div class="shot-result"><small>SALA</small><b>02</b><span>Encontrada</span></div><i class="help-arrow arrow-search">➜</i></div>`;
   if(kind==='details')return `<div class="help-shot"><div class="shot-modal"><small>TURNO DA MANHÃ</small><h4>Sala 03 · Segunda</h4><label>Status <span>Ocupada</span></label><label>Profissional <span>Joyce Lisboa</span></label><label>Especialidade <span>Onco-Geneticista</span></label></div><i class="help-arrow arrow-cell">➜</i></div>`;
@@ -29,8 +46,8 @@ function visualMarkup(kind){
 
 function render(){const slide=slides[index];visual.innerHTML=visualMarkup(slide.visual);title.textContent=slide.title;text.textContent=slide.text;tips.innerHTML=slide.tips.map(item=>`<li>${item}</li>`).join('');step.textContent=`PASSO ${index+1} DE ${slides.length}`;dots.innerHTML=slides.map((_,position)=>`<button type="button" class="${position===index?'active':''}" aria-label="Ir para o passo ${position+1}" data-help-step="${position}"></button>`).join('');dots.querySelectorAll('button').forEach(button=>button.onclick=()=>{index=Number(button.dataset.helpStep);render()});previous.disabled=index===0;next.textContent=index===slides.length-1?'Começar a usar':'Próximo'}
 
-function open(auto=false){if(!user||user.role==='ADMIN'||dialog.open)return;slides=user.role==='EDITOR'?editorSlides:viewerSlides;index=0;dialog.dataset.role=user.role.toLowerCase();render();dialog.showModal();if(auto){user.helpSeen=true;fetch('/api/help/seen',{method:'PUT'}).catch(()=>{})}}
+function open(auto=false){if(!user||user.role==='ADMIN'||dialog.open)return;slides=user.role==='EDITOR'?editorSlides:viewerSlides;index=0;dialog.dataset.role=user.role.toLowerCase();render();dialog.showModal();if(auto)void markAsSeen()}
 
 function build(){if(initialized)return;initialized=true;const link=document.createElement('link');link.rel='stylesheet';link.href='/help.css?v=1';document.head.append(link);const button=document.createElement('button');button.id='helpButton';button.className='help-button';button.type='button';button.title='Abrir guia de ajuda';button.setAttribute('aria-label','Abrir guia de ajuda');button.innerHTML='<span aria-hidden="true">?</span><b>Ajuda</b>';document.querySelector('#workspace .top-actions #theme').before(button);dialog=document.createElement('dialog');dialog.className='help-dialog';dialog.innerHTML=`<div class="help-shell"><header class="help-head"><div><p class="overline">GUIA INTERATIVO</p><h2>Aprenda o essencial</h2></div><button class="help-close" type="button" aria-label="Fechar ajuda">×</button></header><div class="help-body"><div class="help-visual"></div><section class="help-copy"><span class="help-step"></span><h3></h3><p></p><ul></ul></section></div><footer class="help-footer"><div class="help-dots"></div><div class="help-actions"><button class="ghost-button help-previous" type="button">Voltar</button><button class="primary help-next" type="button">Próximo</button></div></footer></div>`;document.body.append(dialog);visual=dialog.querySelector('.help-visual');title=dialog.querySelector('.help-copy h3');text=dialog.querySelector('.help-copy>p');tips=dialog.querySelector('.help-copy ul');step=dialog.querySelector('.help-step');dots=dialog.querySelector('.help-dots');previous=dialog.querySelector('.help-previous');next=dialog.querySelector('.help-next');button.onclick=()=>open(false);dialog.querySelector('.help-close').onclick=()=>dialog.close();previous.onclick=()=>{if(index>0){index--;render()}};next.onclick=()=>{if(index===slides.length-1){dialog.close();return}index++;render()};dialog.addEventListener('click',event=>{if(event.target===dialog)dialog.close()})}
 
-export function setupHelp(account){user=account;build();document.querySelector('link[href^="/help.css"]')?.setAttribute('href','/help.css?v=4');if(account.role!=='ADMIN'&&!account.helpSeen)setTimeout(()=>open(true),450)}
+export function setupHelp(account){user=account;build();document.querySelector('link[href^="/help.css"]')?.setAttribute('href','/help.css?v=4');if(account.role!=='ADMIN'&&!wasSeen(account))setTimeout(()=>{if(user===account&&!wasSeen(account))open(true)},450)}
