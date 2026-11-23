@@ -90,4 +90,8 @@ app.get('/api/export.xlsx',auth,allow('EDITOR','VIEWER'),async(_req,res)=>{const
 const publicDir=path.join(process.cwd(),'src','public');
 app.use(express.static(publicDir,{setHeaders(res,file){if(/\.(?:html|js|css)$/i.test(file))res.setHeader('Cache-Control','no-store, no-cache, must-revalidate')}}));
 app.get('*',(_q,res)=>{res.setHeader('Cache-Control','no-store, no-cache, must-revalidate');res.sendFile(path.join(publicDir,'index.html'))});
-ensureHelpColumn().then(ensureSeed).then(()=>app.listen(Number(process.env.PORT||3000),()=>console.log('Mapa de Salas iniciado'))).catch(e=>{console.error(e);process.exit(1)});
+const port = Number(process.env.PORT || 3000);
+ensureHelpColumn()
+  .then(ensureSeed)
+  .then(() => app.listen(port, '0.0.0.0', () => console.log(`Mapa de Salas iniciado na porta ${port}`)))
+  .catch(error => { console.error(error); process.exit(1); });
