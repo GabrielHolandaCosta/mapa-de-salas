@@ -13,3 +13,6 @@
 
 /* Mantém a navegação visível inclusive em notebooks com pouca altura. */
 .help-dialog{max-height:calc(100dvh - 20px)}.help-shell{height:min(720px,calc(100dvh - 20px));min-height:0;grid-template-rows:auto minmax(0,1fr) auto}.help-body{min-height:0;overflow:hidden}.help-visual,.help-copy{min-height:0;overflow:auto}.shot-table .free{background:#e5f8ed;color:#176b48}.shot-table .occupied{background:#e7f1ff;color:#285f9f}.shot-table .reserved{background:#fff0e5}.shot-table .closed{background:#f3e9f8}@media(max-width:760px){.help-dialog{max-height:calc(100dvh - 18px)}.help-shell{height:calc(100dvh - 18px)}.help-body{overflow:auto}.help-visual,.help-copy{overflow:visible}}
+
+/* Contraste das prévias claras dentro do tema escuro. */
+.shot-table .reserved{color:#8a4b25}.shot-table .closed{color:#704887}.shot-cell,.dark .shot-cell{background:#dcf5ec;color:#173348}.dark .shot-cell small{color:#176b48}.dark .shot-cell b{color:#173348}.dark .shot-cell em{color:#526b73}

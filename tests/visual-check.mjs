@@ -43,6 +43,12 @@ try {
   if (!await page.locator('a[href="/api/export.xlsx"]').isVisible()) throw new Error('A exportação Excel não está disponível');
   await page.screenshot({ path: path.join(output, 'mapa-desktop.png'), fullPage: true });
   await page.locator('#theme').click();
+  await page.locator('#helpButton').click();
+  await page.locator('[data-help-step="2"]').click();
+  const darkPreviewColor=await page.locator('.shot-cell b').evaluate(element=>getComputedStyle(element).color);
+  if(darkPreviewColor!=='rgb(23, 51, 72)')throw new Error('A prévia do destaque está sem contraste no tema escuro');
+  await page.screenshot({ path: path.join(output, 'mapa-ajuda-editor-dark.png'), fullPage: true });
+  await page.locator('.help-close').click();
   await page.screenshot({ path: path.join(output, 'mapa-desktop-dark.png'), fullPage: true });
   await page.setViewportSize({ width:390, height:844 });
   await page.reload();

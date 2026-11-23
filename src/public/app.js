@@ -1,4 +1,4 @@
-import { setupHelp } from './help.js?v=2';
+import { setupHelp } from './help.js?v=3';
 const $=s=>document.querySelector(s==='#shiftSwitch'?'.shift-switch':s), $$=s=>[...document.querySelectorAll(s)];
 const days=['Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
 const services={18:'ECO',19:'MAPA / HOLTER',20:'ECG',21:'T. ERGO / ESPIRO',22:'EEG'};
