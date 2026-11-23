@@ -45,6 +45,14 @@ try {
   if (!await page.locator('a[href="/api/export.docx"]').isVisible()) throw new Error('A exportação Word não está disponível');
   if (!await page.locator('a[href="/api/export.xlsx"]').isVisible()) throw new Error('A exportação Excel não está disponível');
   await page.screenshot({ path: path.join(output, 'mapa-desktop.png'), fullPage: true });
+  await page.locator('[data-area="SERVICES"]').click();
+  if(await page.locator('#scheduleBody .service-combined-row').count()!==5)throw new Error('Os cinco serviços especiais não foram reunidos na grade');
+  if(await page.locator('#scheduleBody .service-slot').count()!==60)throw new Error('Manhã e tarde não aparecem juntas em todos os serviços');
+  await page.locator('#scheduleBody [data-cell][data-shift="TARDE"]').first().click();
+  if(await page.locator('#cellShift').textContent()!=='TURNO DA TARDE')throw new Error('A edição não abriu no turno correto');
+  await page.locator('[data-close="cellDialog"]').click();
+  await page.screenshot({ path: path.join(output, 'mapa-servicos-unificados.png'), fullPage: true });
+  await page.locator('[data-area="ROOMS"]').click();
   await page.locator('#theme').click();
   await page.locator('#helpButton').click();
   await page.locator('[data-help-step="2"]').click();
