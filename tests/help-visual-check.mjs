@@ -21,6 +21,12 @@ try{
   await page.waitForSelector('.help-dialog[open]');
   if(await page.locator('.help-dialog').getAttribute('data-role')!=='viewer')throw new Error('Guia incorreto para Visualizador');
   if(await page.locator('.help-copy h3').textContent()!=='Entenda o mapa em segundos')throw new Error('Primeiro passo do Visualizador incorreto');
+  await page.setViewportSize({width:1124,height:613});
+  const footerBox=await page.locator('.help-footer').boundingBox();
+  if(!footerBox||footerBox.y+footerBox.height>613)throw new Error('A navegação do guia ficou fora da tela');
+  await page.locator('.help-next').click();
+  if(await page.locator('.help-copy h3').textContent()!=='Encontre qualquer informação')throw new Error('O botão Próximo não avançou o guia');
+  await page.locator('[data-help-step="0"]').click();
   await page.screenshot({path:path.join(output,'mapa-ajuda-visualizador.png')});
   for(let step=1;step<5;step++)await page.locator('.help-next').click();
   if(await page.locator('.help-copy h3').textContent()!=='Exporte e personalize')throw new Error('Último passo do Visualizador incorreto');
