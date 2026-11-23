@@ -47,6 +47,9 @@ try {
   await page.locator('[data-help-step="2"]').click();
   const darkPreviewColor=await page.locator('.shot-cell b').evaluate(element=>getComputedStyle(element).color);
   if(darkPreviewColor!=='rgb(23, 51, 72)')throw new Error('A prévia do destaque está sem contraste no tema escuro');
+  await page.locator('[data-help-step="3"]').click();
+  const confirmWidths=await page.locator('.shot-confirm-actions button').evaluateAll(buttons=>buttons.map(button=>button.getBoundingClientRect().width));
+  if(confirmWidths.length!==2||Math.abs(confirmWidths[0]-confirmWidths[1])>1)throw new Error('Os botões da confirmação não estão centralizados e com a mesma largura');
   await page.screenshot({ path: path.join(output, 'mapa-ajuda-editor-dark.png'), fullPage: true });
   await page.locator('.help-close').click();
   await page.screenshot({ path: path.join(output, 'mapa-desktop-dark.png'), fullPage: true });
