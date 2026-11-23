@@ -1,13 +1,15 @@
 # Mapa de Salas
 
-Aplicação web independente para as salas 01 a 17. Usa banco local SQLite, autenticação por sessão HTTP-only, funções por perfil e registros auditáveis.
+Aplicação web independente para as salas 01 a 17 e os serviços especiais do 3º piso. Usa banco local SQLite, autenticação por sessão HTTP-only, funções por perfil e registros auditáveis.
 
 ## Recursos
 
 - Grade semanal com as salas 01 a 17 nas linhas e segunda a sábado nas colunas, separada por manhã e tarde.
+- Tela independente para ECO, MAPA/Holter, ECG, teste ergométrico/espirometria e EEG.
 - Layout próprio para celular, pesquisa, tema escuro, impressão e estados visuais para livre, ocupada, reservada e fechada.
+- Identificação textual e por cores dos estados, com destaques próprios para secretária e atendimentos a cada 15 dias.
 - Exportação organizada em Word e Excel, com reimportação segura dos arquivos gerados pelo sistema.
-- Importação conservadora de `.docx`: lê somente as salas 01–17 e conserva o conteúdo original para revisão.
+- Importação conservadora de `.docx`: lê as salas 01–17 e os serviços especiais, conservando o conteúdo original para revisão.
 - Perfis separados: `ADMIN` gerencia contas, `EDITOR` altera o mapa e `VIEWER` consulta o mapa e o histórico.
 - Confirmação antes de limpar uma célula, uma linha inteira ou excluir um usuário.
 
@@ -35,7 +37,7 @@ Entre com uma conta de editor, clique em **Importar Word/Excel** e confira a qua
 
 O parser não assume campos incertos: mantém o texto integral de cada célula em observações; código e especialidade só são sugeridos quando identificáveis. A revisão é obrigatória (`needsReview`).
 
-O documento de 2026 foi validado com 170 registros: 85 de manhã e 85 à tarde, cobrindo as salas 01 a 17. Para repetir a verificação:
+O documento de 2026 foi validado com 219 registros reconhecidos, cobrindo as salas 01 a 17 e os cinco serviços especiais. Para repetir a verificação:
 
 ```powershell
 npm run verify:word -- "C:\Users\gabrielcosta\Desktop\MAPA DE SALAS 3 PISO -NOVO - 2026 - para mesclagem.docx"

@@ -19,6 +19,7 @@ export function parseRoomDocx(buffer: Buffer) {
   for (const table of tables) {
     let isRoomTable = false;
     let shift: Shift = 'MANHA';
+    let serviceRoom: number | null = null;
     for (const tr of table.match(/<w:tr[\s\S]*?<\/w:tr>/g) || []) {
       const cells = (tr.match(/<w:tc[\s\S]*?<\/w:tc>/g) || []).map(text);
       const joined = cells.join(' ').toUpperCase();
@@ -26,12 +27,16 @@ export function parseRoomDocx(buffer: Buffer) {
       else if (/MANH[ÃAÂ]/.test(joined)) shift = 'MANHA';
       if (cells.some(cell => /SEGUNDA/i.test(cell))) { shift = isRoomTable ? 'TARDE' : 'MANHA'; isRoomTable = true; continue; }
       const roomIndex = cells.findIndex(cell => /SALA\s*\d+/i.test(cell));
-      if (!isRoomTable || roomIndex < 0) continue;
-      const room = Number(cells[roomIndex].match(/\d+/)?.[0]);
-      if (!Number.isInteger(room) || room < 1 || room > 17) continue;
+      const serviceIndex=cells.findIndex(cell=>/^(ECO|MAPA\s*\/?\s*HOLTER|MAPAHOLTER|E[CG]{2}|T\.?\s*ERGO(?:\s*\/?\s*ESPIRO)?|EEG)$/i.test(cell.replace(/\s+/g,' ').trim()));
+      if(serviceIndex>=0){const label=cells[serviceIndex].replace(/\s+/g,'').toUpperCase();serviceRoom=label==='ECO'?18:label.includes('MAPA')?19:label==='ECG'||label==='EGC'?20:label.includes('ERGO')?21:22;isRoomTable=true}
+      if (!isRoomTable || roomIndex < 0 && !serviceRoom) continue;
+      const room = roomIndex>=0?Number(cells[roomIndex].match(/\d+/)?.[0]):serviceRoom!;
+      if (!Number.isInteger(room) || room < 1 || room > 22) continue;
+      const shiftIndex=cells.findIndex(cell=>/^(MANH[ÃAÂ]|TARDE)$/i.test(cell.trim()));
+      const dataStart=room<=17?roomIndex+1:shiftIndex>=0?shiftIndex+1:(serviceIndex>=0?serviceIndex+1:1);
 
       for (let weekday = 0; weekday < 6; weekday += 1) {
-        const raw = cells[roomIndex + weekday + 1]?.trim();
+        const raw = cells[dataStart + weekday]?.trim();
         if (!raw) continue;
         const upper = raw.toUpperCase();
         const status: RoomStatus = /\bLIVRE\b/.test(upper) ? 'LIVRE' : /RESERV/.test(upper) ? 'RESERVADA' : /FECHAD/.test(upper) ? 'FECHADA' : 'OCUPADA';
