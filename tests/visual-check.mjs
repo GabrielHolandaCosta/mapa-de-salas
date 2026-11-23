@@ -2,6 +2,7 @@ import { chromium, request } from 'playwright-core';
 import path from 'node:path';
 
 const output = process.argv[2] || process.cwd();
+const baseURL = process.env.MAPA_BASE_URL || 'http://localhost:3000';
 const edge = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
 const username = `visual${Date.now()}`;
 const viewerUsername = `viewer${Date.now()}`;
@@ -9,7 +10,7 @@ const userIds=[];
 const browser = await chromium.launch({ executablePath: edge, headless: true });
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 1 });
-  await page.goto('http://localhost:3000');
+  await page.goto(baseURL);
   await page.locator('#username').fill('admin');
   await page.locator('#password').fill('123456');
   await page.locator('#loginForm button').click();
@@ -32,6 +33,11 @@ try {
   await page.locator('#password').fill('123456');
   await page.locator('#loginForm button').click();
   await page.waitForSelector('#workspace:not([hidden])');
+  await page.waitForSelector('.help-dialog[open]');
+  if (await page.locator('.help-dialog').getAttribute('data-role') !== 'editor') throw new Error('O guia do Editor não foi carregado');
+  await page.screenshot({ path: path.join(output, 'mapa-ajuda-editor.png'), fullPage: true });
+  await page.locator('.help-close').click();
+  await page.waitForTimeout(600);
   if (await page.locator('#logsBtn').isVisible()) throw new Error('Editor não pode visualizar o histórico');
   if (!await page.locator('a[href="/api/export.docx"]').isVisible()) throw new Error('A exportação Word não está disponível');
   if (!await page.locator('a[href="/api/export.xlsx"]').isVisible()) throw new Error('A exportação Excel não está disponível');
@@ -52,12 +58,17 @@ try {
   await page.locator('#password').fill('123456');
   await page.locator('#loginForm button').click();
   await page.waitForSelector('#workspace:not([hidden])');
+  await page.waitForSelector('.help-dialog[open]');
+  if (await page.locator('.help-dialog').getAttribute('data-role') !== 'viewer') throw new Error('O guia do Visualizador não foi carregado');
+  await page.screenshot({ path: path.join(output, 'mapa-ajuda-visualizador.png'), fullPage: true });
+  await page.locator('.help-close').click();
+  await page.waitForTimeout(600);
   if (!await page.locator('#logsBtn').isVisible()) throw new Error('Visualizador precisa enxergar o histórico');
   if (await page.locator('#importBtn').isVisible()) throw new Error('Visualizador não pode importar arquivos');
 } finally {
   await browser.close();
   if (userIds.length) {
-    const context = await request.newContext({ baseURL:'http://localhost:3000' });
+    const context = await request.newContext({ baseURL });
     await context.post('/api/auth/login', { data:{ username:'admin', password:'123456' } });
     for(const id of userIds) await context.delete(`/api/users/${id}`);
     await context.dispose();
