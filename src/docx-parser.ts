@@ -36,16 +36,22 @@ export function parseRoomDocx(buffer: Buffer) {
       const dataStart=room<=17?roomIndex+1:shiftIndex>=0?shiftIndex+1:(serviceIndex>=0?serviceIndex+1:1);
 
       for (let weekday = 0; weekday < 6; weekday += 1) {
-        const raw = cells[dataStart + weekday]?.trim();
-        if (!raw) continue;
+        const source = cells[dataStart + weekday]?.trim();
+        if (!source) continue;
+        const raw = source
+          .replace(/(\d{4})(15\s*dias?)/gi, '$1 $2')
+          .replace(/([A-Za-zÀ-ÿ])(15\s*dias?)/gi, '$1 $2')
+          .replace(/\s+/g, ' ')
+          .trim();
         const upper = raw.toUpperCase();
         const status: RoomStatus = /\bLIVRE\b/.test(upper) ? 'LIVRE' : /RESERV/.test(upper) ? 'RESERVADA' : /FECHAD/.test(upper) ? 'FECHADA' : 'OCUPADA';
-        const code = raw.match(/\(?\s*(\d{4,})\s*\)?/)?.[1] || null;
+        const code = raw.match(/\(\s*(\d{4})\s*\)/)?.[1] || raw.match(/\b(\d{4})\b/)?.[1] || null;
         const specialties = [...raw.matchAll(/\(([^()]{3,80})\)/g)].map(match => match[1].trim()).filter(value => !/^\d+$/.test(value));
         const specialty = specialties.at(-1) || null;
         const operator = /SECRET[ÁA]RIA/i.test(raw) ? 'Secretária' : null;
-        const professional = status === 'OCUPADA' ? raw.split(/\(|\b15\s*dias\b|Secret[áa]ria/i)[0].trim() || null : null;
-        parsed.push({ room, weekday, scope: 'PADRAO', shift, status, professional, code, specialty, operator, notes: raw, rawText: raw, needsReview: true });
+        const professionalSource = raw.replace(/^\(\s*/,'');
+        const professional = status === 'OCUPADA' ? professionalSource.split(/\(|\b15\s*dias\b|Secret[áa]ria/i)[0].replace(/\b\d{4}\s*$/,'').trim() || null : null;
+        parsed.push({ room, weekday, scope: 'PADRAO', shift, status, professional, code, specialty, operator, notes: null, rawText: raw, needsReview: true });
       }
     }
   }

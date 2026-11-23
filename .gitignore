@@ -6,4 +6,5 @@ tmp/
 *.log
 .server.pid
 prisma/*.db
+backups/*.db
 prisma/*.db-journal

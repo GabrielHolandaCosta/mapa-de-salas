@@ -13,5 +13,13 @@ describe('importação do mapa original', () => {
     expect(rows.filter(row => row.room <= 17)).toHaveLength(170);
     expect(rows.filter(row => row.room >= 18)).toHaveLength(49);
     expect(rows.every(row => row.room >= 1 && row.room <= 22)).toBe(true);
+    const klayne = rows.find(row => row.room === 15 && row.weekday === 4 && row.shift === 'MANHA');
+    expect(klayne).toMatchObject({ professional:'Klayne Martins', code:'8934', specialty:'Medico Clinico' });
+    expect(klayne?.rawText).toContain('8934 15 dias');
+    const reserved = rows.find(row => row.room === 1 && row.weekday === 0 && row.shift === 'MANHA');
+    expect(reserved).toMatchObject({ status:'RESERVADA', notes:null });
+    const flavia = rows.find(row => row.room === 5 && row.weekday === 2 && row.shift === 'MANHA');
+    expect(flavia).toMatchObject({ professional:'Flavia Motta', code:'5334', specialty:'Oncologista' });
+    expect(rows.filter(row => row.status === 'OCUPADA' && !row.professional)).toHaveLength(0);
   });
 });
