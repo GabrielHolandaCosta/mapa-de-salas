@@ -17,11 +17,21 @@ function updateOverlay(show,message='O site foi atualizado. Redirecionando para 
 function setTheme(dark){document.documentElement.classList.toggle('dark',dark);localStorage.setItem('mapa-theme',dark?'dark':'light')}
 setTheme(localStorage.getItem('mapa-theme')==='dark');
 
+const loginThemeButton=document.createElement('button');
+loginThemeButton.type='button';
+loginThemeButton.className='login-theme-toggle';
+loginThemeButton.setAttribute('aria-label','Alternar entre modo claro e escuro');
+function refreshThemeButtons(){const dark=document.documentElement.classList.contains('dark');loginThemeButton.innerHTML=dark?'☀ <span>Modo claro</span>':'☾ <span>Modo escuro</span>';$('#theme').textContent=dark?'☀':'☾';$('#adminTheme').textContent=dark?'☀':'☾'}
+loginThemeButton.onclick=()=>{setTheme(!document.documentElement.classList.contains('dark'));refreshThemeButtons()};
+document.querySelector('#login .login-box').prepend(loginThemeButton);
+const toggleTheme=()=>{setTheme(!document.documentElement.classList.contains('dark'));refreshThemeButtons()};
+refreshThemeButtons();
+
 async function boot(){if(new URLSearchParams(location.search).get('reason')==='updated'){try{const response=await fetch('/api/version',{cache:'no-store'});if(response.ok)rememberVersion((await response.json()).instanceId)}catch{}await fetch('/api/auth/logout',{method:'POST'}).catch(()=>{});history.replaceState({},'', '/loginadm');showLogin(true);return}try{const {user,instanceId}=await api('/api/auth/me');const known=storedVersion();if(known&&known!==instanceId){rememberVersion(instanceId);saveCellDraft();await fetch('/api/auth/logout',{method:'POST'}).catch(()=>{});location.replace('/loginadm?reason=updated');return}rememberVersion(instanceId);state.user=user;state.instanceId=instanceId;enter()}catch{showLogin()}}
 function enter(){if(state.user.role==='ADMIN'){if(location.pathname!=='/admin')history.replaceState({},'', '/admin');showAdmin()}else{if(location.pathname==='/admin'||location.pathname==='/loginadm')history.replaceState({},'', '/');showWorkspace()}}
 $('#loginForm').addEventListener('submit',async event=>{event.preventDefault();$('#loginError').textContent='';try{const result=await api('/api/auth/login',{method:'POST',body:JSON.stringify({username:$('#username').value,password:$('#password').value})});state.user=result.user;state.instanceId=result.instanceId;rememberVersion(result.instanceId);$('#updateNotice').hidden=true;enter()}catch(error){$('#loginError').textContent=error.message}});
 async function logout(){await api('/api/auth/logout',{method:'POST'}).catch(()=>{});state.instanceId=null;history.replaceState({},'', '/');showLogin()}
-$('#logout').onclick=logout;$('#adminLogout').onclick=logout;$('#theme').onclick=()=>setTheme(!document.documentElement.classList.contains('dark'));$('#adminTheme').onclick=$('#theme').onclick;
+$('#logout').onclick=logout;$('#adminLogout').onclick=logout;$('#theme').onclick=toggleTheme;$('#adminTheme').onclick=toggleTheme;
 
 async function showWorkspace(){$('#login').hidden=true;$('#adminPage').hidden=true;$('#workspace').hidden=false;$('#userBadge').textContent=`${state.user.name} · ${state.user.role==='EDITOR'?'Editor':'Visualizador'}`;$$('.editor-only').forEach(el=>el.hidden=state.user.role!=='EDITOR');$$('.viewer-only').forEach(el=>el.hidden=state.user.role!=='VIEWER');await loadMatrix();restoreCellDraft();setupHelp(state.user)}
 async function loadMatrix(){const results=await Promise.all(days.map((_,weekday)=>api(`/api/assignments?scope=PADRAO&weekday=${weekday}`)));state.rows.clear();results.forEach(({rows},weekday)=>rows.forEach(row=>state.rows.set(key(row.room,weekday,row.shift),row)));render()}

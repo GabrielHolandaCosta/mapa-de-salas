@@ -48,6 +48,8 @@
 
 /* Identidade visual mais institucional e ligada à planta dos consultórios. */
 .brand-icon{background:#0f766e;box-shadow:none}.brand-icon svg{width:27px;height:27px;fill:none;stroke:#fff;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.brand-icon svg circle{fill:#fff;stroke:none}.brand:hover .brand-icon{transform:none;box-shadow:none}.login-visual{background:#0b2638}.login-visual:after{display:none}.help-visual{background:#e7eff0}.dark .help-visual{background:#102a34}
+
+.login-theme-toggle{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--text);padding:8px 11px;font-size:11px;font-weight:800;margin:0 0 30px auto;box-shadow:0 5px 14px rgba(15,42,56,.07)}.login-theme-toggle:hover{border-color:var(--teal);color:var(--teal);transform:translateY(-1px)}.dark .login-theme-toggle{background:#1b2c37;color:#edf7f8;border-color:#38505e}.dark .login-theme-toggle:hover{color:#75dec9;border-color:#75dec9}@media(max-width:720px){.login-theme-toggle{margin:0 0 26px auto}}
 @keyframes dialog-exit{from{opacity:1;transform:none}to{opacity:0;transform:translateY(9px) scale(.985)}}.modal.is-closing{animation:dialog-exit .18s ease-in forwards;pointer-events:none}
 
 /* Serviços especiais: manhã e tarde permanecem juntas, como no mapa original. */

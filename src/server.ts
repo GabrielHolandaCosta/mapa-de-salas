@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import path from 'node:path';
+import { readFile } from 'node:fs/promises';
 import crypto from 'node:crypto';
 import express from 'express';
 import cookieParser from 'cookie-parser';
@@ -42,7 +43,12 @@ const assignmentSchema=z.object({room:z.number().int().min(1).max(22),weekday:z.
 const clean=(x:any)=>Object.fromEntries(Object.entries(x).filter(([k])=>!['id','updatedAt','updatedById','version'].includes(k)));
 function dateAt(s?:string|null){return s?new Date(`${s}T12:00:00.000Z`):null}
 async function audit(userId:string, action:AuditAction, a:any, before:any, after:any){await db.audit.create({data:{userId,action,assignmentId:a?.id,room:a?.room,weekday:a?.weekday,date:a?.date,scope:a?.scope,shift:a?.shift,before:before??undefined,after:after??undefined} as any});}
-async function ensureSeed(){ const username=(process.env.ADMIN_USER||'admin').toLowerCase(); const email=`${username}@local`; const exists=await db.user.findFirst({where:{OR:[{username},{email}]}}); if(exists&&!exists.username)await db.user.update({where:{id:exists.id},data:{username}});if(!exists) await db.user.create({data:{name:process.env.ADMIN_NAME||'Administrador',username,email,passwordHash:await bcrypt.hash(process.env.ADMIN_PASSWORD||'123456',12),role:'ADMIN'}}); for(let day=0;day<6;day++)for(let room=1;room<=22;room++)for(const shift of ['MANHA','TARDE'] as Shift[]) await db.assignment.upsert({where:{room_weekday_scope_shift:{room,weekday:day,scope:'PADRAO',shift}},update:{},create:{room,weekday:day,scope:'PADRAO',shift,status:'LIVRE'}}); await db.assignment.updateMany({where:{status:'LIVRE',OR:[{professional:{not:null}},{code:{not:null}},{specialty:{not:null}},{operator:{not:null}}]},data:{status:'OCUPADA'}}); }
+let defaultAssignmentsCache: Promise<any[]> | null = null;
+function defaultAssignments(){
+  defaultAssignmentsCache ??= readFile(path.join(process.cwd(),'prisma','default-assignments.json'),'utf8').then(JSON.parse);
+  return defaultAssignmentsCache;
+}
+async function ensureSeed(){ const username=(process.env.ADMIN_USER||'admin').toLowerCase(); const email=`${username}@local`; const exists=await db.user.findFirst({where:{OR:[{username},{email}]}}); if(exists&&!exists.username)await db.user.update({where:{id:exists.id},data:{username}});if(!exists) await db.user.create({data:{name:process.env.ADMIN_NAME||'Administrador',username,email,passwordHash:await bcrypt.hash(process.env.ADMIN_PASSWORD||'123456',12),role:'ADMIN'}}); for(const row of await defaultAssignments()) await db.assignment.upsert({where:{room_weekday_scope_shift:{room:row.room,weekday:row.weekday,scope:'PADRAO',shift:row.shift}},update:{},create:row}); await db.assignment.updateMany({where:{status:'LIVRE',OR:[{professional:{not:null}},{code:{not:null}},{specialty:{not:null}},{operator:{not:null}}]},data:{status:'OCUPADA'}}); }
 async function ensureHelpColumn(){try{await db.$executeRawUnsafe('ALTER TABLE "User" ADD COLUMN "helpSeenAt" DATETIME')}catch(error){if(!String(error).toLowerCase().includes('duplicate column'))throw error}}
 
 app.post('/api/auth/login',async(req,res)=>{const data=z.object({username:z.string().min(1),password:z.string().min(1)}).safeParse(req.body); if(!data.success)return res.status(400).json({error:'Informe usuário e senha.'});const username=data.data.username.trim().toLowerCase();const u=await db.user.findFirst({where:{OR:[{username},{email:username.includes('@')?username:`${username}@local`}]}}); if(!u||!u.active||!roles.includes(u.role as Role)||!await bcrypt.compare(data.data.password,u.passwordHash))return res.status(401).json({error:'Usuário ou senha inválidos.'}); const me:AuthUser={id:u.id,name:u.name,username:u.username||u.email.split('@')[0],role:u.role as Role};res.cookie('session',token(me),{httpOnly:true,sameSite:'lax',secure:process.env.NODE_ENV==='production',maxAge:8*3600e3});res.json({user:{...me,helpSeen:Boolean(u.helpSeenAt)},instanceId});});
