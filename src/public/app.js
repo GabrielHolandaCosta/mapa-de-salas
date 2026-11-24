@@ -1,7 +1,7 @@
 import { setupHelp } from './help.js?v=4';
 import { historyDetails } from './history-details.js?v=1';
 const $=s=>document.querySelector(s==='#shiftSwitch'?'.shift-switch':s), $$=s=>[...document.querySelectorAll(s)];
-const roomMark='<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M8 9h24v22H8zM8 17h24M16 9v22M24 9v22"/><circle cx="12" cy="13" r="1.3"/><circle cx="20" cy="13" r="1.3"/><circle cx="28" cy="13" r="1.3"/></svg>';
+const roomMark='<img src="/favicon.svg?v=2" alt="" width="40" height="40" style="display:block;width:100%;height:100%;border-radius:inherit">';
 $$('.brand-icon').forEach(icon=>{icon.innerHTML=roomMark;icon.setAttribute('aria-hidden','true')});
 const days=['Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
 const services={18:'ECO',19:'MAPA / HOLTER',20:'ECG',21:'T. ERGO / ESPIRO',22:'EEG'};
