@@ -10,7 +10,7 @@ Aplicação web independente para as salas 01 a 17 e os serviços especiais do 3
 - Identificação textual e por cores dos estados, com destaques próprios para secretária e atendimentos a cada 15 dias.
 - Exportação organizada em Word e Excel, com reimportação segura dos arquivos gerados pelo sistema.
 - Importação conservadora de `.docx`: lê as salas 01–17 e os serviços especiais, conservando o conteúdo original para revisão.
-- Perfis separados: `ADMIN` gerencia contas, `EDITOR` altera o mapa e `VIEWER` consulta o mapa e o histórico.
+- Perfis separados: `ADMIN` gerencia contas e também pode editar o mapa e consultar o histórico, `EDITOR` altera o mapa e `VIEWER` consulta o mapa e o histórico.
 - Confirmação antes de limpar uma célula, uma linha inteira ou excluir um usuário.
 
 ## Rodar localmente
