@@ -1,6 +1,6 @@
 # Mapa de Salas
 
-Aplicação web independente para as salas 01 a 17 e os serviços especiais do 3º piso. Usa banco local SQLite, autenticação por sessão HTTP-only, funções por perfil e registros auditáveis.
+Aplicação web independente para os mapas de salas de Mangabeiras e Gruta. Usa banco local SQLite, autenticação por sessão HTTP-only, funções por perfil e registros auditáveis. O mapa de Mangabeiras corresponde ao 3º piso.
 
 ## Recursos
 
@@ -11,6 +11,7 @@ Aplicação web independente para as salas 01 a 17 e os serviços especiais do 3
 - Exportação organizada em Word e Excel, com reimportação segura dos arquivos gerados pelo sistema.
 - Importação conservadora de `.docx`: lê as salas 01–17 e os serviços especiais, conservando o conteúdo original para revisão.
 - Perfis separados: `ADMIN` gerencia contas e também pode editar o mapa e consultar o histórico, `EDITOR` altera o mapa e `VIEWER` consulta o mapa e o histórico.
+- O administrador define as unidades disponíveis para cada pessoa. Cada mapa, seu histórico e suas exportações são independentes. As contas existentes mantêm acesso a Mangabeiras; a Gruta começa vazia.
 - Confirmação antes de limpar uma célula, uma linha inteira ou excluir um usuário.
 
 ## Rodar localmente
@@ -48,7 +49,7 @@ npm run verify:word -- "C:\Users\gabrielcosta\Desktop\MAPA DE SALAS 3 PISO -NOVO
 1. Envie este repositório para GitHub e crie um projeto no Railway.
 2. Adicione um Volume persistente ao serviço, montado em `/data`.
 3. Configure `DATABASE_URL=file:/data/mapa-de-salas.db`, `JWT_SECRET` (valor longo aleatório), `ADMIN_NAME`, `ADMIN_USER`, `ADMIN_PASSWORD` e `NODE_ENV=production`.
-4. O Railway usa `railway.toml`: cria o banco no volume, semeia somente o primeiro administrador e inicia a aplicação.
+4. O Railway usa `railway.toml`: atualiza a estrutura do banco no volume, preenche dados iniciais sem substituir registros existentes e inicia a aplicação. Faça um backup do volume antes de atualizações que alterem a estrutura do banco.
 
 Use HTTPS em produção; assim o cookie de sessão passa a ser `Secure` automaticamente.
 

@@ -21,13 +21,13 @@ async function main() {
   for (const assignment of await defaultAssignments()) {
     const row = assignment as any;
     // Só preenche células criadas vazias pelo sistema, sem histórico de edição.
-    const current = await db.assignment.findUnique({ where: { room_weekday_scope_shift: { room: row.room, weekday: row.weekday, scope: 'PADRAO', shift: row.shift } } });
+    const current = await db.assignment.findUnique({ where: { unit_room_weekday_scope_shift: { unit: 'MANGABEIRAS', room: row.room, weekday: row.weekday, scope: 'PADRAO', shift: row.shift } } });
     if (current && current.status === 'LIVRE' && current.version === 1 && !current.updatedById && !current.professional && !current.code && !current.specialty && !current.operator && !current.notes && !current.rawText && !current.needsReview) {
       const history = await db.audit.count({ where: { assignmentId: current.id } });
       if (history === 0) await db.assignment.updateMany({ where: { id: current.id, version: 1, updatedById: null, status: 'LIVRE', professional: null, code: null, specialty: null, operator: null, notes: null, rawText: null, needsReview: false }, data: row });
     }
     await db.assignment.upsert({
-      where: { room_weekday_scope_shift: { room: row.room, weekday: row.weekday, scope: 'PADRAO', shift: row.shift } },
+      where: { unit_room_weekday_scope_shift: { unit: 'MANGABEIRAS', room: row.room, weekday: row.weekday, scope: 'PADRAO', shift: row.shift } },
       update: {},
       create: row
     });
