@@ -1,4 +1,4 @@
-export function setupExportDialog(getUnit) {
+export function setupExportDialog(getUnit, onPrint) {
   const dialog = document.createElement('dialog');
   dialog.className = 'export-dialog';
   dialog.setAttribute('aria-labelledby', 'exportDialogTitle');
@@ -22,22 +22,36 @@ export function setupExportDialog(getUnit) {
   dialog.querySelector('.export-dialog-close').addEventListener('click', close);
   dialog.querySelector('.export-dialog-cancel').addEventListener('click', close);
   dialog.addEventListener('click', event => { if (event.target === dialog) close(); });
+  function openDialog(selectedFormat) {
+    format = selectedFormat;
+    unit = getUnit();
+    const printing = format === 'print';
+    const formatName = printing ? 'Impressão' : format === 'docx' ? 'Word' : 'Excel';
+    dialog.querySelector('.export-dialog-kicker').textContent = printing ? 'IMPRIMIR MAPA' : 'EXPORTAR MAPA';
+    dialog.querySelector('#exportDialogTitle').textContent = printing ? 'O que você deseja imprimir?' : 'O que você deseja exportar?';
+    dialog.querySelector('#exportDialogDescription').textContent = printing ? 'Escolha o conteúdo que deseja enviar para impressão.' : 'Escolha o conteúdo que deseja incluir no arquivo.';
+    dialog.querySelector('[data-export-unit]').textContent = unit === 'GRUTA' ? 'Gruta' : 'Mangabeiras · 3º piso';
+    dialog.querySelector('[data-export-format]').textContent = formatName;
+    dialog.querySelector('.export-dialog-submit').textContent = printing ? 'Continuar para impressão' : `Baixar ${formatName}`;
+    dialog.showModal();
+    dialog.querySelector('input:checked').focus();
+  }
   document.querySelectorAll('a[href^="/api/export."]').forEach(link => {
     link.addEventListener('click', event => {
       event.preventDefault();
-      format = link.getAttribute('href').includes('.xlsx') ? 'xlsx' : 'docx';
-      unit = getUnit();
-      dialog.querySelector('[data-export-unit]').textContent = unit === 'GRUTA' ? 'Gruta' : 'Mangabeiras · 3º piso';
-      dialog.querySelector('[data-export-format]').textContent = format === 'docx' ? 'Word' : 'Excel';
-      dialog.querySelector('.export-dialog-submit').textContent = `Baixar ${format === 'docx' ? 'Word' : 'Excel'}`;
-      dialog.showModal();
-      dialog.querySelector('input:checked').focus();
+      openDialog(link.getAttribute('href').includes('.xlsx') ? 'xlsx' : 'docx');
     });
   });
+  document.querySelector('#printBtn').addEventListener('click', () => openDialog('print'));
   dialog.querySelector('form').addEventListener('submit', event => {
     event.preventDefault();
     const selection = dialog.querySelector('input[name="selection"]:checked')?.value;
     if (!selection) return;
+    if (format === 'print') {
+      close();
+      onPrint({unit, selection});
+      return;
+    }
     const query = new URLSearchParams({unit, selection});
     const download = document.createElement('a');
     download.href = `/api/export.${format}?${query}`;
