@@ -1,0 +1,31 @@
+.print-report { display: none; }
+@media print {
+  @page { size: A4 landscape; margin: 9mm; }
+  body.printing-report > :not(.print-report) { display: none !important; }
+  html:has(body.printing-report), body.printing-report { margin: 0; min-height: 0 !important; background: white !important; color: #172c39 !important; }
+  body.printing-report > .print-report { display: block !important; font-family: Arial, sans-serif; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .print-section + .print-section { break-before: page; page-break-before: always; }
+  
+  .print-table { width: 100%; min-width: 0; border-collapse: collapse; table-layout: fixed; }
+  .print-table thead { display: table-header-group; }
+  .print-table tr { break-inside: avoid; page-break-inside: avoid; }
+  .print-table .print-heading th { background: white !important; color: #173b4d !important; border: 0; padding: 0 0 4mm; text-align: left; letter-spacing: normal; white-space: normal; }
+  .print-heading span, .print-heading strong, .print-heading small { display: block; }
+  .print-heading strong span { display: inline; }
+  .print-heading span { font-size: 8pt; color: #087f73; letter-spacing: .08em; }
+  .print-heading strong { margin: 1mm 0; font-size: 17pt; }
+  .print-heading small { font-size: 8pt; font-weight: normal; color: #5f727c; }
+  .print-table .print-columns th { padding: 2mm; background: #173b4d !important; color: white !important; border: 1px solid #173b4d; font-size: 8pt; text-align: center; white-space: normal; }
+  .print-table .print-columns th:first-child { width: 12%; }
+  .print-table tbody th, .print-table tbody td { height: auto; padding: 2mm 1.5mm; border: 1px solid #b9c9ce; text-align: center; vertical-align: middle; white-space: normal; overflow-wrap: anywhere; }
+  .print-table tbody th { background: #eaf1f2 !important; color: #173b4d !important; font-size: 8pt; }
+  .print-cell { color: #172c39 !important; font-size: 7.3pt; line-height: 1.28; }
+  .print-cell strong, .print-cell > span { display: block; }
+  .print-cell .print-status { color: #425e6c; font-size: 6.4pt; font-weight: bold; text-transform: uppercase; }
+  .print-cell .print-tag { display: inline; margin: 0 1mm; font-size: 6.5pt; font-weight: bold; }
+  .print-cell .print-note { white-space: pre-wrap; }
+  .print-livre { background: #e4f5eb !important; }
+  .print-ocupada { background: #e8f1fc !important; }
+  .print-reservada { background: #fff0e4 !important; }
+  .print-fechada { background: #f2eaf5 !important; }
+}
