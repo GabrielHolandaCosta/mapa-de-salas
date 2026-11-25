@@ -1,3 +1,4 @@
+import { setupExportDialog } from './export-dialog.js?v=1';
 import { printMap } from './print-map.js?v=1';
 import { setupHelp } from './help.js?v=4';
 import { historyDetails } from './history-details.js?v=1';
@@ -109,4 +110,5 @@ async function heartbeat(){if(!state.user||state.updating)return;try{await fetch
 async function refreshPresence(){if(!state.user||state.user.role!=='ADMIN'||$('#adminPage').hidden||document.hidden)return;try{const {rows}=await api('/api/users/presence');const status=new Map(rows.map(row=>[row.id,row.online]));$$('[data-user]').forEach(row=>{const badge=row.querySelector('[data-presence]');if(!badge||!status.has(row.dataset.user))return;const online=status.get(row.dataset.user);badge.className='presence-badge '+(online?'is-online':'is-offline');badge.setAttribute('aria-label',online?'Online':'Offline');badge.innerHTML='<i aria-hidden="true"></i>'+(online?'Online':'Offline')})}catch{$$('[data-presence]').forEach(badge=>{badge.className='presence-badge is-unknown';badge.setAttribute('aria-label','Estado de conexão indisponível');badge.innerHTML='<i aria-hidden="true"></i>Indisponível'})}}
 setInterval(heartbeat,25000);setInterval(refreshPresence,15000);addEventListener('focus',()=>{heartbeat();refreshPresence()});document.addEventListener('visibilitychange',()=>{if(!document.hidden){heartbeat();refreshPresence()}});
 setInterval(checkVersion,3000);addEventListener('focus',checkVersion);document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkVersion()});
+setupExportDialog(()=>state.unit);
 boot();
