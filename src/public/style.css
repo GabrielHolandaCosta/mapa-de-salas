@@ -95,3 +95,7 @@ button:focus-visible, a.secondary:focus-visible {
 }
 
 button:disabled { cursor: not-allowed; }
+
+/* Estado de conexão na lista de contas, visível apenas ao administrador. */
+.presence-badge{display:inline-flex;align-items:center;gap:5px;margin-top:5px;font-size:11px;font-weight:750;line-height:1.2;white-space:nowrap}.presence-badge i{width:7px;height:7px;border-radius:50%;background:currentColor;flex:none}.presence-badge.is-online{color:#087c58}.presence-badge.is-offline{color:#9c5460}.dark .presence-badge.is-online{color:#75dcb7}.dark .presence-badge.is-offline{color:#e4a1a9}
+.presence-badge.is-unknown{color:var(--muted)}
