@@ -99,3 +99,40 @@ button:disabled { cursor: not-allowed; }
 /* Estado de conexão na lista de contas, visível apenas ao administrador. */
 .presence-badge{display:inline-flex;align-items:center;gap:5px;margin-top:5px;font-size:11px;font-weight:750;line-height:1.2;white-space:nowrap}.presence-badge i{width:7px;height:7px;border-radius:50%;background:currentColor;flex:none}.presence-badge.is-online{color:#087c58}.presence-badge.is-offline{color:#9c5460}.dark .presence-badge.is-online{color:#75dcb7}.dark .presence-badge.is-offline{color:#e4a1a9}
 .presence-badge.is-unknown{color:var(--muted)}
+
+/* Contas: cada linha mantém identificação, acesso e ações bem separados. */
+.users-title { gap: 16px; }
+.users-title > div { min-width: 0; }
+.user-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  grid-template-areas: "identity identity state" "permission units actions";
+  gap: 12px 16px;
+  align-items: end;
+  padding: 18px 20px;
+}
+.user-main { grid-area: identity; align-items: center; min-width: 0; }
+.user-name { min-width: 0; }
+.user-name b { white-space: normal; overflow: visible; overflow-wrap: anywhere; line-height: 1.35; }
+.user-name small { overflow-wrap: anywhere; }
+.user-access { grid-area: permission; display: block; min-width: 0; }
+.unit-user { grid-area: units; min-width: 0; }
+.user-access label, .unit-user label { display: grid; gap: 6px; color: var(--muted); font-size: 11px; font-weight: 700; }
+.user-access select, .unit-user select { width: 100%; min-width: 0; height: 38px; font-size: 12px; padding: 7px 10px; }
+.user-row > .status-active { grid-area: state; align-self: center; justify-self: end; }
+.user-actions { grid-area: actions; align-self: end; flex-wrap: wrap; gap: 6px; }
+.user-actions button { min-height: 38px; }
+.user-row .own-account { align-self: center; }
+@media(max-width: 700px) {
+  .user-row { grid-template-columns: repeat(2, minmax(0,1fr)); grid-template-areas: "identity state" "permission units" "actions actions"; gap: 12px; padding: 16px; }
+  .user-access { grid-row: auto; grid-column: auto; }
+  .user-actions { justify-content: flex-start; }
+}
+@media(max-width: 360px) {
+  .user-row { grid-template-areas: "identity identity" "state state" "permission units" "actions actions"; }
+  .user-row > .status-active { justify-self: start; }
+}
+
+.user-name b{text-overflow:clip}
+@media(max-width:480px){#adminPage .topbar{height:auto;min-height:76px;flex-wrap:wrap;gap:8px;padding:12px}#adminPage .top-actions{flex-wrap:wrap;max-width:100%}#adminBadge{max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+@media(max-width:700px){.user-row{position:relative;grid-template-areas:"identity identity" "permission units" "actions actions"}.user-main{padding-right:58px}.user-row > .status-active{position:absolute;top:20px;right:16px}}
