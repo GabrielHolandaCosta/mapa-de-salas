@@ -136,3 +136,6 @@ button:disabled { cursor: not-allowed; }
 .user-name b{text-overflow:clip}
 @media(max-width:480px){#adminPage .topbar{height:auto;min-height:76px;flex-wrap:wrap;gap:8px;padding:12px}#adminPage .top-actions{flex-wrap:wrap;max-width:100%}#adminBadge{max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
 @media(max-width:700px){.user-row{position:relative;grid-template-areas:"identity identity" "permission units" "actions actions"}.user-main{padding-right:58px}.user-row > .status-active{position:absolute;top:20px;right:16px}}
+
+/* Separa as salas com a mesma linha usada entre serviços especiais. */
+#scheduleBody tr:not(.service-shift-row):not(:first-child)>*{border-top:2px solid var(--navy)}
